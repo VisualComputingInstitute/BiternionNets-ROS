@@ -1,16 +1,16 @@
 import numpy as np
+import sys
 import DeepFried2 as df
 from lbtoolbox.util import batched
 from lbtoolbox.plotting import liveplot, annotline
 
 def dotrain(model, crit, aug, Xtr, ytr, nepochs=3, batchsize=100, title=None):
     opt = df.AdaDelta(rho=.95, eps=1e-7, lr=1)
-
     model.training()
-
     costs = []
-    for e in range(nepochs):
-        print("Epoch ", e+1)
+    print("Training in progress...")
+    for e in range(nepochs):      
+        print("Current epoch: {0} out of {1}".format(e+1,nepochs))
         batchcosts = []
         for Xb, yb in batched(batchsize, Xtr, ytr, shuf=True):
             if aug is not None:

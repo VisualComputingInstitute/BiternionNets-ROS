@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import sys,os
+import argparse
 
 import DeepFried2 as df
 from training_utils import dotrain, dostats, dopred
@@ -145,22 +146,6 @@ def save_angle(img, pred, name, zf=5):
   os.makedirs(os.path.dirname(path), exist_ok=True)
   cv2.imwrite(path, (255*bgra01c).astype(np.uint8))
 
-def do_and_dump(pre, name, rnge, zf=5):
-  lbu.printnow(sys.stdout, name)
-  X = np.array([myimread(pjoin(datadir, '50', '{}-{:03}.jpg'.format(name, i))) for i in rnge])
-  P = bit2deg(pre(X))
-
-  progress = widgets.IntProgressWidget(value=0, min=0, max=len(X), description='Saving:')
-  display(progress)
-
-  for i, (x, p) in enumerate(zip(X, P)):
-    save_angle(x, p, 'deep-biternion-crops/{}/{:03}'.format(name, i+1), zf=zf)
-    progress.value += 1
-
-def dump(prefix, N, X, preds):
-  for name, x, pre in zip(N, X, preds):
-      save_angle(x, bit2deg(pre[None,:]), pjoin(prefix, *name.split('-')))
-
 def ensemble_degrees(angles):
   return np.arctan2(np.mean(np.sin(np.deg2rad(angles)), axis=0), np.mean(np.cos(np.deg2rad(angles)), axis=0))
 
@@ -263,24 +248,44 @@ def prepare_data():
   return Xtr['8'], ytr, ntr['8'], Xte['8'], yte
 
 if __name__ == '__main__':
+  parser = argparse.ArgumentParser(description='Head angle biternion net training')
+  parser.add_argument(
+    "-t",
+    "--type", 
+    type=str, 
+    default='cosine', 
+    help='net type: "cosine" or "biternion" ',
+  )
+
+  types = ['cosine','von-mises']
+  type = vars(parser.parse_args())['type']
+  print(type+" net will be used")
+  if type not in types:
+    print("You specified wrong net type. Sorry =(")
+    sys.exit()  
+
   Xtr,ytr,ntr,Xte,yte = prepare_data()
-  
   Xtr, ytr = Xtr, ytr.astype(df.floatX)
   Xte, yte = Xte, yte.astype(df.floatX)
   aug = AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
-
-  #cosine criterion
-  net = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
-  print('{:.3f}M params'.format(count_params(net)/1000000))
-  trains_linreg_bt_cos = dotrain(net, CosineCriterion(), aug, Xtr, ytr)
-  print("Costs: {}".format(' ; '.join(map(str, trains_linreg_bt_cos))))
-
-  dostats(net, aug, Xtr, batchsize=1000)
+ 
+  if type == 'cosine':  
+    net = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
+    print('{:.3f}M params'.format(count_params(net)/1000000))
+    trains_linreg_bt_cos = dotrain(net, CosineCriterion(), aug, Xtr, ytr)
+    print("Costs: {}".format(' ; '.join(map(str, trains_linreg_bt_cos))))
+    dostats(net, aug, Xtr, batchsize=1000)
+    y_pred = bit2deg(dopred_deg(net, aug, Xte))
+    res = maad_from_deg(y_pred, bit2deg(yte))
+    print(res.mean())
+  elif type == 'von-mises':
+    net_vm = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
+    print('{:.3f}M params'.format(count_params(net_vm)/1000000))
+    trains__bt_vm = dotrain(net_vm, VonMisesBiternionCriterion(1), aug, Xtr, ytr)
+    dostats(net_vm, aug, Xtr, batchsize=1000)
+    y_pred_bt_vm = bit2deg(dopred_deg(net_vm, aug, Xte))
+    res = maad_from_deg(y_pred_bt_vm, bit2deg(yte))
+    print(res.mean())
   
-  y_pred = bit2deg(dopred_deg(net, aug, Xte))
-  res = maad_from_deg(y_pred, bit2deg(yte))
-  print(res.mean())
-
-  for i, (x, y) in enumerate(zip(Xte, y_pred)):
-    img = np.rollaxis(x, 0, 3) * 255
-    cv2.imwrite('tmp/{:.2f}_{}.png'.format(float(y), i), img.astype(np.uint8))
+#TODO we can estimate correspondance between orig and flipped img pred
+#if they agree, we are bit-scalable, if not -> =(
