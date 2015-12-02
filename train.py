@@ -10,8 +10,6 @@ from lbtoolbox.thutil import count_params
 from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 
 pjoin = os.path.join
-reportsdir = '/work/kurin/reports/vision-heads2'
-datadir = '/work/kurin/vision-heads2'
 
 class Flatten(df.Module):
   def symb_forward(self, symb_in):
@@ -143,7 +141,7 @@ def dopred_deg(model, aug, X, batchsize=100):
 def maad_from_deg(preds, reals):
   return np.rad2deg(np.abs(np.arctan2(np.sin(np.deg2rad(reals-preds)), np.cos(np.deg2rad(reals-preds)))))
 
-def prepare_data():
+def prepare_data(datadir):
   classes4x = ['front','right','back','left']
   classnums4x = {c: i for i, c in enumerate(classes4x)}
   classes4p = ['frontright','backright','backleft','frontleft']
@@ -193,18 +191,11 @@ def prepare_data():
       (classnums4p['backright'], classnums4p['backleft']),
   ])
 
-  Xtr['8'], ytr['8'], ntr['8'] = flipall(Xtr['8'], ytr['8'], ntr['8'], flips=[
-      (classnums8['frontleft'], classnums8['frontright']),
-      (classnums8['frontright'], classnums8['frontleft']),
-      (classnums8['leftfront'], classnums8['rightfront']),
-      (classnums8['rightfront'], classnums8['leftfront']),
-      (classnums8['backleft'], classnums8['backright']),
-      (classnums8['backright'], classnums8['backleft']),
-      (classnums8['leftback'], classnums8['rightback']),
-      (classnums8['rightback'], classnums8['leftback']),
-  ])
-  
-  Xte['8'], yte['8'], nte['8'] = merge(Xte, yte, nte)
+  # Merge 4x and 4p into 8
+  Xtr['8'], ytr['8'], ntr['8'] = merge4to8(Xtr, ytr, ntr)
+  Xte['8'], yte['8'], nte['8'] = merge4to8(Xte, yte, nte)
+
+  # Convert class-IDs into biternions.
   ytr = np.array([centre8_vec[classes8[y]]for y in ytr['8']])
   yte = np.array([centre8_vec[classes8[y]]for y in yte['8']])
 
@@ -215,6 +206,10 @@ if __name__ == '__main__':
   parser.add_argument("-c", "--criterion",
     type=str, default='cosine',
     help='Training criterion: `cosine` or `von-mises`',
+  )
+  parser.add_argument("-d", "--datadir",
+    type=str, default=".",
+    help="Location of training data. Needs `4x` and `4p` subfolders."
   )
 
   args = parser.parse_args()
@@ -229,7 +224,7 @@ if __name__ == '__main__':
     sys.exit(1)
 
   printnow("Loading data from {}", args.datadir)
-  Xtr,ytr,ntr,Xte,yte = prepare_data()
+  Xtr,ytr,ntr,Xte,yte = prepare_data(args.datadir)
   Xtr, ytr = Xtr, ytr.astype(df.floatX)
   Xte, yte = Xte, yte.astype(df.floatX)
   printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000)
