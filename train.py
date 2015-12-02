@@ -45,13 +45,13 @@ def load(path, testname, skip, ydict):
         Xtr.append(myimread(pjoin(path, lbl, f)))
         ytr.append(ydict[lbl])
         ntr.append(f)
-  
+
   # Sorted testing stuff is better to look at.
   s = np.argsort(nte)
 
   return np.array(Xtr), np.array(Xte)[s], np.array(ytr), np.array(yte)[s], ntr, [nte[i] for i in s]
 
-def merge(X, y, n):
+def merge4to8(X, y, n):
   y8 = np.full_like(y['4p'], np.nan)
   for idx4p, n4p in enumerate(n['4p']):
     idx4x = n['4x'].index(n4p)
@@ -149,18 +149,7 @@ def prepare_data():
   classes4p = ['frontright','backright','backleft','frontleft']
   classnums4p = {c: i for i, c in enumerate(classes4p)}
   classes8 = ['frontright','rightfront','rightback','backright','backleft','leftback','leftfront','frontleft']
-  classnums8 = {c: i for i, c in enumerate(classes8)}
 
-  centre4_deg = {
-      'front': 0,
-      'frontright': 45,
-      'right': 90,
-      'backright': 135,
-      'back': 180,
-      'backleft': 225,
-      'left': 270,
-      'frontleft': 315,
-  }
   centre8_deg = {
       'frontright': 22.5,
       'rightfront': 67.5,
@@ -171,18 +160,14 @@ def prepare_data():
       'leftfront': 292.5,
       'frontleft': 337.5,
   }
-
-  centre4_rad = {k: np.deg2rad(v) for k, v in centre4_deg.items()}
-  centre8_rad = {k: np.deg2rad(v) for k, v in centre8_deg.items()}
-  centre4_vec = {k:    deg2bit(v) for k, v in centre4_deg.items()}
-  centre8_vec = {k:    deg2bit(v) for k, v in centre8_deg.items()}
+  centre8_vec = {k: deg2bit(v) for k, v in centre8_deg.items()}
 
   Xtr, Xte = {}, {}
   ytr, yte = {}, {}
   ntr, nte = {}, {}
 
   for name, ydict in {'4x': classnums4x, '4p': classnums4p}.items():
-    Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name), 
+    Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name),
       testname='lucas', skip=['dog', 'dog2', 'doggy'], ydict=ydict
     )
 
@@ -192,9 +177,8 @@ def prepare_data():
     print("Testset: X({}), y({})".format(Xte[name].shape, yte[name].shape))
     print("Random label: {}".format(set(ytr[name])))
 
-  Xtr['8'], ytr['8'], ntr['8'] = merge(Xtr, ytr, ntr)
-  
-  
+  # Do flip-augmentation beforehand.
+
   Xtr['4x'], ytr['4x'], ntr['4x'] = flipall(Xtr['4x'], ytr['4x'], ntr['4x'], flips=[
       (classnums4x['front'], classnums4x['front']),
       (classnums4x['back'], classnums4x['back']),
