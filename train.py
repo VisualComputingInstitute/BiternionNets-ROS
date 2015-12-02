@@ -185,6 +185,10 @@ if __name__ == '__main__':
     type=str, default=".",
     help="Location of training data. Needs `4x` and `4p` subfolders."
   )
+  parser.add_argument("-o", "--output",
+    type=argparse.FileType('w'), default="biternion-net.npz",
+    help="File to save the learned model as."
+  )
 
   args = parser.parse_args()
   print(args.criterion + " criterion will be used")
@@ -212,7 +216,12 @@ if __name__ == '__main__':
 
   dostats(net, aug, Xtr, batchsize=1000)
 
+  # Save the network.
+  printnow("Saving the learned network to {}", args.output)
+  np.savez_compressed(args.output, net.__getstate__())
+
   # Prediction, TODO: Move to ROS node.
+  printnow("(TEMP) Doing predictions.", args.output)
   y_pred = bit2deg(dopred_deg(net, aug, Xte))
   res = maad_from_deg(y_pred, bit2deg(yte))
   print(res.mean())
