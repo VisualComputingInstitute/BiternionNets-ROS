@@ -166,7 +166,7 @@ def prepare_data(datadir):
 
   for name, ydict in {'4x': classnums4x, '4p': classnums4p}.items():
     Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name),
-      testname='lucas', skip=['dog', 'dog2', 'doggy'], ydict=ydict
+      testname='lucas', skip=['.', 'dog', 'dog2', 'doggy'], ydict=ydict
     )
 
   for name in Xtr:
