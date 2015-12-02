@@ -177,6 +177,10 @@ if __name__ == '__main__':
     type=str, default='cosine',
     help='Training criterion: `cosine` or `von-mises`',
   )
+  parser.add_argument("-e", "--epochs",
+    type=int, default=3,
+    help='Number of epochs to train.'
+  )
   parser.add_argument("-d", "--datadir",
     type=str, default=".",
     help="Location of training data. Needs `4x` and `4p` subfolders."
@@ -203,7 +207,7 @@ if __name__ == '__main__':
   net = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
   printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
 
-  costs = dotrain(net, crit, aug, Xtr, ytr)
+  costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
   print("Costs: {}".format(' ; '.join(map(str, costs))))
 
   dostats(net, aug, Xtr, batchsize=1000)
