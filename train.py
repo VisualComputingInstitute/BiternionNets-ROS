@@ -4,16 +4,13 @@ import sys, os
 import argparse
 
 import DeepFried2 as df
+from df_extras import Flatten, Biternion, BiternionCriterion
 from training_utils import dotrain, dostats, dopred
 from lbtoolbox.util import flipany, printnow
 from lbtoolbox.thutil import count_params
 from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 
 pjoin = os.path.join
-
-class Flatten(df.Module):
-  def symb_forward(self, symb_in):
-    return symb_in.flatten(2)
 
 def myimread(fname, zeroone=True, resize=None):
   im = cv2.imread(fname, flags=cv2.IMREAD_COLOR)
@@ -67,33 +64,6 @@ def flipall(X, y, n, flips):
     a, b, c = flipped(X, y, n, old, new)
     fx.append(a) ; fy.append(b) ; fn.append(c)
   return np.concatenate([X] + fx), np.concatenate([y] + fy), n + sum(fn, list())
-
-class VonMisesBiternionCriterion(df.Criterion):
-  def __init__(self, kappa):
-    df.Criterion.__init__(self)
-    self.kappa = kappa
-
-  def symb_forward(self, symb_in, symb_tgt):
-    cos_angles = df.T.batched_dot(symb_in, symb_tgt)
-
-    # This is the only difference to the pure `CosineCriterion`.
-    # Obviously, they could be in the same class, but I separate them here for narration.
-    cos_angles = df.T.exp(self.kappa * (cos_angles - 1))
-
-    return df.T.mean(1 - cos_angles)
-
-class CosineCriterion(df.Criterion):
-  def symb_forward(self, symb_in, symb_tgt):
-    # For normalized `symb_in` and `symb_tgt`, dot-product (batched)
-    # outputs a cosine value, i.e. between -1 (worst) and 1 (best)
-    cos_angles = df.T.batched_dot(symb_in, symb_tgt)
-
-    # Rescale to a cost going from 2 (worst) to 0 (best) each, then take mean.
-    return df.T.mean(1 - cos_angles)
-
-class Biternion(df.Module):
-  def symb_forward(self, symb_in):
-    return symb_in / df.T.sqrt((symb_in**2).sum(axis=1, keepdims=True))
 
 def mknet(*outlayers):
   return df.Sequential(                          #     3@46
