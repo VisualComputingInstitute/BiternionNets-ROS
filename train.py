@@ -26,7 +26,7 @@ def myimread(fname, zeroone=True, resize=None):
   # In OpenCV, color dimension is last, but theano likes it to be first.
   # (That's map of triplets vs three maps philosophy.)
   im = np.rollaxis(im, 2, 0) #TODO add comment or vars instead of bare numbers
-  return im.astype(np.float32)/256 if zeroone else im #TODO remove hardcoded values
+  return im.astype(np.float32)/255 if zeroone else im
 
 def load(path, testname, skip, ydict):
   Xtr, Xte = [], []
