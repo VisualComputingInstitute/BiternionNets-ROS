@@ -1,19 +1,14 @@
 import numpy as np
 import cv2
-import sys,os
+import sys, os
 import argparse
 
 import DeepFried2 as df
 from training_utils import dotrain, dostats, dopred
-import lbtoolbox.util as lbu
-from lbtoolbox.util import batched
+from lbtoolbox.util import flipany, printnow
 from lbtoolbox.thutil import count_params
 from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 
-import theano as th
-import theano.tensor as T
-
-floatX = th.config.floatX
 pjoin = os.path.join
 reportsdir = '/work/kurin/reports/vision-heads2'
 datadir = '/work/kurin/vision-heads2'
@@ -66,7 +61,7 @@ def merge(X, y, n):
 
 def flipped(X, y, n, old, new):
     indices = np.where(y == old)[0]
-    return lbu.flipany(X[indices], dim=3), np.full(len(indices), new, dtype=y.dtype), [n[i] for i in indices]
+    return flipany(X[indices], dim=3), np.full(len(indices), new, dtype=y.dtype), [n[i] for i in indices]
 
 def flipall(X, y, n, flips):
   fx, fy, fn = [], [], []
@@ -139,13 +134,6 @@ def deg2bit(deg):
 def bit2deg(angles_bit):
   return (np.rad2deg(np.arctan2(angles_bit[:,1], angles_bit[:,0])) + 360) % 360
 
-def save_angle(img, pred, name, zf=5):
-  viz = alexviz.visualize_head_pose_regression(img[::-1,:,:], pred, circular=True, zoom_factor=zf, val_bg=0.45)
-  bgra01c = np.rollaxis(viz, 0, 3)[:,:,[2,1,0,3]]
-  path = pjoin(reportsdir, name + '.png')
-  os.makedirs(os.path.dirname(path), exist_ok=True)
-  cv2.imwrite(path, (255*bgra01c).astype(np.uint8))
-
 def ensemble_degrees(angles):
   return np.arctan2(np.mean(np.sin(np.deg2rad(angles)), axis=0), np.mean(np.cos(np.deg2rad(angles)), axis=0))
 
@@ -154,14 +142,6 @@ def dopred_deg(model, aug, X, batchsize=100):
 
 def maad_from_deg(preds, reals):
   return np.rad2deg(np.abs(np.arctan2(np.sin(np.deg2rad(reals-preds)), np.cos(np.deg2rad(reals-preds)))))
-
-def show_errs_deg(preds, reals, epoch=-1):
-    errs = maad_from_deg(preds, reals)
-    mean_errs = np.mean(errs, axis=1)
-    std_errs = np.std(errs, axis=1)
-    #add degree sign here
-    print("Error: {:5.2f}+-{:5.2f}".format(np.mean(mean_errs), np.mean(std_errs)))
-    print("Stdev: {:5.2f}+-{:5.2f}".format(np.std(mean_errs), np.std(std_errs)))
 
 def prepare_data():
   classes4x = ['front','right','back','left']
@@ -200,13 +180,12 @@ def prepare_data():
   Xtr, Xte = {}, {}
   ytr, yte = {}, {}
   ntr, nte = {}, {}
-  
+
   for name, ydict in {'4x': classnums4x, '4p': classnums4p}.items():
     Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name), 
       testname='lucas', skip=['dog', 'dog2', 'doggy'], ydict=ydict
     )
- 
-  
+
   for name in Xtr:
     print(name)
     print("Trainset: X({}), y({})".format(Xtr[name].shape, ytr[name].shape))
@@ -244,48 +223,46 @@ def prepare_data():
   Xte['8'], yte['8'], nte['8'] = merge(Xte, yte, nte)
   ytr = np.array([centre8_vec[classes8[y]]for y in ytr['8']])
   yte = np.array([centre8_vec[classes8[y]]for y in yte['8']])
-  
+
   return Xtr['8'], ytr, ntr['8'], Xte['8'], yte
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Head angle biternion net training')
-  parser.add_argument(
-    "-t",
-    "--type", 
-    type=str, 
-    default='cosine', 
-    help='net type: "cosine" or "biternion" ',
+  parser = argparse.ArgumentParser(description='BiternionNet training')
+  parser.add_argument("-c", "--criterion",
+    type=str, default='cosine',
+    help='Training criterion: `cosine` or `von-mises`',
   )
 
-  types = ['cosine','von-mises']
-  type = vars(parser.parse_args())['type']
-  print(type+" net will be used")
-  if type not in types:
-    print("You specified wrong net type. Sorry =(")
-    sys.exit()  
+  args = parser.parse_args()
+  print(args.criterion + " criterion will be used")
 
+  if args.criterion == 'cosine':
+    crit = BiternionCriterion()
+  elif args.criterion == 'von-mises':
+    crit = BiternionCriterion(kappa=1)
+  else:
+    print("ERROR: You specified wrong criterion. Sorry =(")
+    sys.exit(1)
+
+  printnow("Loading data from {}", args.datadir)
   Xtr,ytr,ntr,Xte,yte = prepare_data()
   Xtr, ytr = Xtr, ytr.astype(df.floatX)
   Xte, yte = Xte, yte.astype(df.floatX)
+  printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000)
+
   aug = AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
- 
-  if type == 'cosine':  
-    net = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
-    print('{:.3f}M params'.format(count_params(net)/1000000))
-    trains_linreg_bt_cos = dotrain(net, CosineCriterion(), aug, Xtr, ytr)
-    print("Costs: {}".format(' ; '.join(map(str, trains_linreg_bt_cos))))
-    dostats(net, aug, Xtr, batchsize=1000)
-    y_pred = bit2deg(dopred_deg(net, aug, Xte))
-    res = maad_from_deg(y_pred, bit2deg(yte))
-    print(res.mean())
-  elif type == 'von-mises':
-    net_vm = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
-    print('{:.3f}M params'.format(count_params(net_vm)/1000000))
-    trains__bt_vm = dotrain(net_vm, VonMisesBiternionCriterion(1), aug, Xtr, ytr)
-    dostats(net_vm, aug, Xtr, batchsize=1000)
-    y_pred_bt_vm = bit2deg(dopred_deg(net_vm, aug, Xte))
-    res = maad_from_deg(y_pred_bt_vm, bit2deg(yte))
-    print(res.mean())
-  
+  net = mknet(df.Linear(512, 2, initW=df.init.normal(0.01)), Biternion())
+  printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
+
+  costs = dotrain(net, crit, aug, Xtr, ytr)
+  print("Costs: {}".format(' ; '.join(map(str, costs))))
+
+  dostats(net, aug, Xtr, batchsize=1000)
+
+  # Prediction, TODO: Move to ROS node.
+  y_pred = bit2deg(dopred_deg(net, aug, Xte))
+  res = maad_from_deg(y_pred, bit2deg(yte))
+  print(res.mean())
+
 #TODO we can estimate correspondance between orig and flipped img pred
 #if they agree, we are bit-scalable, if not -> =(
