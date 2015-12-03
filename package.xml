@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package>
+  <name>biternion</name>
+  <version>0.1.0</version>
+  <description>The biternion package, get your fix for all things orientation here!</description>
+
+  <maintainer email="beyer@vision.rwth-aachen.de">Lucas Beyer</maintainer>
+  <author email="beyer@vision.rwth-aachen.de">Lucas Beyer</author>
+  <author email="vitaliykurin@gmail.com">Vitaly Kurin</author>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>rwth_upper_body_detector</build_depend>
+  <build_depend>rwth_pedestrian_tracking</build_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>message_filters</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>rwth_upper_body_detector</run_depend>
+  <run_depend>rwth_pedestrian_tracking</run_depend>
+
+  <export>
+  </export>
+</package>

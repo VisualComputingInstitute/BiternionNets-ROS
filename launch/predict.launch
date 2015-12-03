@@ -1,0 +1,19 @@
+<launch>
+    <arg name="model" default="/home/beyer/spencer/biternion-net.npz" />
+    <arg name="factor" default="-1" />
+    <arg name="hfactor" default="$(arg factor)" />
+    <arg name="wfactor" default="$(arg factor)" />
+    <arg name="src" default="rear" />
+    <!--<arg name="track2d" default="/spencer/perception_internal/people_tracking/rgbd_$(arg src)_top/tracked_persons_2d" />-->
+    <arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_$(arg src)_top/upper_body_detector/detections" />
+    <arg name="rgb" default="/spencer/sensors/rgbd_$(arg src)_top/rgb/image_raw" />
+    <!--<arg name="d" default="/spencer/sensors/rgbd_$(arg src)_top/depth/image_rect" />-->
+
+    <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="true">
+        <param name="model" value="$(arg model)" />
+        <param name="hfactor" value="$(arg hfactor)" />
+        <param name="wfactor" value="$(arg wfactor)" />
+        <param name="ubd" value="$(arg ubd)" />
+        <param name="rgb" value="$(arg rgb)" />
+    </node>
+</launch>

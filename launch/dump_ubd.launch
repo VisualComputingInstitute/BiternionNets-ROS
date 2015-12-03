@@ -1,0 +1,17 @@
+<launch>
+    <!-- TODO: Maybe change to something better by default? -->
+    <arg name="dir" default="~" />
+    <arg name="fullbody" default="false" />
+
+    <arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_front_top/upper_body_detector/detections" />
+    <arg name="rgb" default="/spencer/sensors/rgbd_front_top/rgb/image_raw" />
+    <arg name="d" default="/spencer/sensors/rgbd_front_top/depth/image_rect" />
+
+    <node pkg="head_orientation" type="dump_ubd.py" name="dump_ubd" output="screen">
+        <param name="dir" value="$(arg dir)" />
+        <param name="fullbody" value="$(arg fullbody)" type="bool" />
+        <param name="ubd" value="$(arg ubd)" />
+        <param name="rgb" value="$(arg rgb)" />
+        <param name="d" value="$(arg d)" />
+    </node>
+</launch>
