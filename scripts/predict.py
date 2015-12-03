@@ -117,9 +117,10 @@ class Predictor(object):
     def factrect(self, rect):
         x, y, w, h = rect
 
+        # NOTE: Order is important here.
         h = int(round(min(self.hfact*w, h) if self.hfact > 0 else h))
-        w = int(round(self.wfact*w))
         x = x + int(round((1 - self.wfact)/2*w))
+        w = int(round(self.wfact*w))
 
         return x, y, w, h
 
