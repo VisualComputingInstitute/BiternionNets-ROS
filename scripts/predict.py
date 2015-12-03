@@ -123,6 +123,7 @@ class Predictor(object):
                     l, t, w, h = self.factrect(detrect)
                     px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
                     py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
+                    cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
                     cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
                     cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2, cv2.CV_AA)
                     cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2, cv2.CV_AA)
