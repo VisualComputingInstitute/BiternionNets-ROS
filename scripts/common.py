@@ -45,4 +45,10 @@ def bit2deg(angles_bit):
 
 
 def ensemble_degrees(angles):
+  """
+  Averages the `angles` (in degrees) along the first dimension, i.e. an input of
+  shape (3, 5) will result in 5 average angle outputs.
+  Also works for 1D inputs, where it just computes the average of all.
+  NOTE: returned angle is in radians (for now).
+  """
   return np.arctan2(np.mean(np.sin(np.deg2rad(angles)), axis=0), np.mean(np.cos(np.deg2rad(angles)), axis=0))

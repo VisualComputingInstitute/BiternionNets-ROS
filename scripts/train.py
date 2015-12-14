@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import sys, os
 import argparse
+import copy
 
 import DeepFried2 as df
 from lbtoolbox.util import flipany, printnow
@@ -43,10 +44,7 @@ def load(path, testname, skip, ydict):
         ytr.append(ydict[lbl])
         ntr.append(f)
 
-  # Sorted testing stuff is better to look at.
-  s = np.argsort(nte)
-
-  return np.array(Xtr), np.array(Xte)[s], np.array(ytr), np.array(yte)[s], ntr, [nte[i] for i in s]
+  return np.array(Xtr), np.array(Xte), np.array(ytr), np.array(yte), ntr, nte
 
 def merge4to8(X, y, n):
   y8 = np.full_like(y['4p'], np.nan)
@@ -60,12 +58,15 @@ def flipped(X, y, n, old, new):
     indices = np.where(y == old)[0]
     return flipany(X[indices], dim=3), np.full(len(indices), new, dtype=y.dtype), [n[i] for i in indices]
 
-def flipall(X, y, n, flips):
+def flipall(X, y, n, flips, append=True):
   fx, fy, fn = [], [], []
   for old, new in flips:
     a, b, c = flipped(X, y, n, old, new)
     fx.append(a) ; fy.append(b) ; fn.append(c)
-  return np.concatenate([X] + fx), np.concatenate([y] + fy), n + sum(fn, list())
+  if append:
+    return np.concatenate([X] + fx), np.concatenate([y] + fy), n + sum(fn, list())
+  else:
+    return np.concatenate(fx), np.concatenate(fy), sum(fn,list())
 
 def dopred_deg(model, aug, X, batchsize=100):
   return np.rad2deg(dopred(model, aug, X, ensembling=ensemble_degrees, output2preds=lambda x: x, batchsize=batchsize))
@@ -92,21 +93,20 @@ def prepare_data(datadir):
   }
   centre8_vec = {k: deg2bit(v) for k, v in centre8_deg.items()}
 
-  Xtr, Xte = {}, {}
-  ytr, yte = {}, {}
-  ntr, nte = {}, {}
+  #f stands for 'flipped'
+  Xtr, Xte, Xte_f = {}, {}, {}
+  ytr, yte, yte_f = {}, {}, {}
+  ntr, nte, nte_f = {}, {}, {}
 
   for name, ydict in {'4x': classnums4x, '4p': classnums4p}.items():
     Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name),
       testname='lucas', skip=['.', 'dog', 'dog2', 'doggy'], ydict=ydict
     )
-
   for name in Xtr:
     print(name)
     print("Trainset: X({}), y({})".format(Xtr[name].shape, ytr[name].shape))
     print("Testset: X({}), y({})".format(Xte[name].shape, yte[name].shape))
     print("Random label: {}".format(set(ytr[name])))
-
   # Do flip-augmentation beforehand.
 
   Xtr['4x'], ytr['4x'], ntr['4x'] = flipall(Xtr['4x'], ytr['4x'], ntr['4x'], flips=[
@@ -122,16 +122,33 @@ def prepare_data(datadir):
       (classnums4p['backleft'], classnums4p['backright']),
       (classnums4p['backright'], classnums4p['backleft']),
   ])
-
+   
+  Xte_f['4x'], yte_f['4x'], nte_f['4x'] = flipall(Xte['4x'], yte['4x'], nte['4x'], flips=[
+      (classnums4x['front'], classnums4x['front']),
+      (classnums4x['back'], classnums4x['back']),
+      (classnums4x['left'], classnums4x['right']),
+      (classnums4x['right'], classnums4x['left'])],
+      append=False
+    )
+  Xte_f['4p'], yte_f['4p'], nte_f['4p'] = flipall(Xte['4p'], yte['4p'], nte['4p'], flips=[
+      (classnums4p['frontleft'], classnums4p['frontright']),
+      (classnums4p['frontright'], classnums4p['frontleft']),
+      (classnums4p['backleft'], classnums4p['backright']),
+      (classnums4p['backright'], classnums4p['backleft'])],
+      append=False
+    )
+  
+  
   # Merge 4x and 4p into 8
   Xtr['8'], ytr['8'], ntr['8'] = merge4to8(Xtr, ytr, ntr)
   Xte['8'], yte['8'], nte['8'] = merge4to8(Xte, yte, nte)
+  Xte_f['8'], yte_f['8'], nte_f['8'] = merge4to8(Xte_f, yte_f, nte)
 
   # Convert class-IDs into biternions.
   ytr = np.array([centre8_vec[classes8[y]]for y in ytr['8']])
   yte = np.array([centre8_vec[classes8[y]]for y in yte['8']])
-
-  return Xtr['8'], ytr, ntr['8'], Xte['8'], yte
+  yte_f = np.array([centre8_vec[classes8[y]]for y in yte_f['8']])
+  return Xtr['8'], ytr, Xte['8'], yte, Xte_f['8'], yte_f, nte['8'], nte_f['8']
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='BiternionNet training')
@@ -164,9 +181,10 @@ if __name__ == '__main__':
     sys.exit(1)
 
   printnow("Loading data from {}", args.datadir)
-  Xtr,ytr,ntr,Xte,yte = prepare_data(args.datadir)
-  Xtr, ytr = Xtr, ytr.astype(df.floatX)
-  Xte, yte = Xte, yte.astype(df.floatX)
+  Xtr, ytr, Xte, yte, Xte_f, yte_f, nte, nte_f = prepare_data(args.datadir)
+  ytr = ytr.astype(df.floatX)
+  yte = yte.astype(df.floatX)
+  yte_f = yte_f.astype(df.floatX)
   printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000)
 
   aug = AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
@@ -179,14 +197,22 @@ if __name__ == '__main__':
   dostats(net, aug, Xtr, batchsize=1000)
 
   # Save the network.
-  printnow("Saving the learned network to {}", args.output)
-  np.savez_compressed(args.output, net.__getstate__())
+  #printnow("Saving the learned network to {}", args.output)
+  #np.savez_compressed(args.output, net.__getstate__())
 
   # Prediction, TODO: Move to ROS node.
+  s = np.argsort(nte)
+  Xte,yte,Xte_f,yte_f = Xte[s],yte[s],Xte_f[s],yte_f[s]
+  
   printnow("(TEMP) Doing predictions.", args.output)
   y_pred = bit2deg(dopred_deg(net, aug, Xte))
+  
+  y_pred_f = dopred_deg(net, aug, Xte_f)
+  y_pred_f[:,1]=-y_pred_f[:,1]
+  y_pred_f = bit2deg(y_pred_f)
+  
   res = maad_from_deg(y_pred, bit2deg(yte))
-  print(res.mean())
-
-#TODO we can estimate correspondance between orig and flipped img pred
-#if they agree, we are bit-scalable, if not -> =(
+  res2 = maad_from_deg(np.rad2deg(ensemble_degrees([y_pred,y_pred_f])),bit2deg(yte))
+  print("Finished predictions")
+  print("Mean angle error for train images             = ", res.mean())
+  print("Mean angle error for flipped augmented images = ", res2.mean())
