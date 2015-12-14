@@ -19,6 +19,7 @@
 #include <spencer_tracking_msgs/TrackedPersons2d.h>
 
 extern "C" int mkpath(const char *path);
+void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh=1.0f);
 
 using namespace spencer_tracking_msgs;
 
@@ -26,6 +27,7 @@ using namespace spencer_tracking_msgs;
 std::string g_dir;
 double g_hfactor;
 double g_wfactor;
+bool g_subbg;
 
 // For filename and stats.
 size_t g_counter = 0;
@@ -84,6 +86,7 @@ void cb(const TrackedPersons2d::ConstPtr& t2d, const sensor_msgs::ImageConstPtr&
 
     for(size_t idet = 0 ; idet < ndet ; ++idet) {
         const TrackedPerson2d& p2d = t2d->boxes[idet];
+        // Compute this detection's cut-out boxes.
         uint32_t h = g_hfactor > 0 ? std::min(uint32_t(g_hfactor * p2d.w), p2d.h)
                                    : p2d.h;
         uint32_t w = uint32_t(g_wfactor * p2d.w);
@@ -92,13 +95,20 @@ void cb(const TrackedPersons2d::ConstPtr& t2d, const sensor_msgs::ImageConstPtr&
         cv::Rect bbox_rgb = bbox & cv::Rect(0, 0, cv_rgb->image.cols, cv_rgb->image.rows);
         cv::Rect bbox_d = bbox & cv::Rect(0, 0, cv_d->image.cols, cv_d->image.rows);
 
+        // Cut-out and optionally subtract background.
+        cv::Mat rgbimg(cv_rgb->image, bbox_rgb);
+        cv::Mat dimg(cv_d->image, bbox_d);
+        if(g_subbg)
+            subtractbg(rgbimg, dimg);
+
+        // Save.
         // TODO: setw
         std::string fname = g_dir + "/" + to_s(p2d.track_id) + "_" + to_s(g_counter);
-        if(!cv::imwrite(fname + "_rgb.png", cv::Mat(cv_rgb->image, bbox_rgb))) {
+        if(!cv::imwrite(fname + "_rgb.png", rgbimg)) {
             ROS_ERROR("Error writing image %s", (fname + "_rgb.png").c_str());
         }
 
-        dump_32FC1(fname + "_d.csv", cv_d->image);
+        dump_32FC1(fname + "_d.csv", dimg);
 
         std::cout << "\rDumping: " << g_counter << std::flush;
         g_counter++;
@@ -115,6 +125,7 @@ int main(int argc, char* argv[])
     nh_.param("hfactor", g_hfactor, -1.0);
     nh_.param("wfactor", g_wfactor,  1.0);
     g_wfactor = g_wfactor <= 0 ? 1.0 : g_wfactor;
+    nh_.param("subbg", g_subbg, false);
 
     // equivalend to Python's expanduser(dir)
     wordexp_t exp_result;
@@ -129,7 +140,7 @@ int main(int argc, char* argv[])
     }
     // TODO: warn if non-emtpy?
 
-    ROS_INFO("Dumping %s-bodies into %s", g_hfactor > 0 ? to_s(g_hfactor).c_str() : "full", g_dir.c_str());
+    ROS_INFO("Dumping %s%s-bodies into %s", g_subbg ? "bg-subtracted, " : " ", g_hfactor > 0 ? to_s(g_hfactor).c_str() : "full", g_dir.c_str());
 
     std::string topic_t2d, topic_rgb, topic_d;
     nh_.param("track2d", topic_t2d, std::string("/upper_body_detector/detections"));

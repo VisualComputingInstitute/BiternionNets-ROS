@@ -20,6 +20,7 @@ try:
     from upper_body_detector.msg import UpperBodyDetector
 except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
+    from spencer_tracking_msgs.msg import TrackedPersons2d
 
 
 def cutout(img, detrect):
@@ -30,6 +31,15 @@ def cutout(img, detrect):
     y2, x2 = y+h, x+w
     y1, x1 = max(y, 0), max(x, 0)
     return img[y1:y2, x1:x2]
+
+
+def get_rects(msg):
+    if isinstance(msg, TrackedPersons2d):
+        return [(p2d.x, p2d.y, p2d.w, p2d.h) for p2d in msg.boxes]
+    elif isinstance(msg, UpperBodyDetector):
+        return list(zip(ubd.pos_x, ubd.pos_y, ubd.width, ubd.height))
+    else:
+        raise TypeError("Unknown source type: {}".format(type(msg)))
 
 
 class Predictor(object):
@@ -58,16 +68,22 @@ class Predictor(object):
         # Do a fake forward-pass for precompilation.
         self.net.forward(np.zeros((1,3,46,46), df.floatX))
 
-        subs = [
-            message_filters.Subscriber(rospy.get_param("~ubd", "/upper_body_detector/detections"), UpperBodyDetector),
-            message_filters.Subscriber(rospy.get_param("~rgb", "/head_xtion/rgb/image_rect_color"), ROSImage),
-            #message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage),
-        ]
+        src = rospy.get_param("~src", "tra")
+        subs = []
+        if src == "tra":
+            subs.append(message_filters.Subscriber(rospy.get_param("~tra", "/TODO"), TrackedPersons2d))
+        elif src == "ubd":
+            subs.append(message_filters.Subscriber(rospy.get_param("~ubd", "/upper_body_detector/detections"), UpperBodyDetector))
+        else:
+            raise ValueError("Unknown source type: " + src)
+
+        subs.append(message_filters.Subscriber(rospy.get_param("~rgb", "/head_xtion/rgb/image_rect_color"), ROSImage))
+        #message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage),
 
         ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.1)
         ts.registerCallback(self.cb)
 
-    def cb(self, ubd, rgb):  #, d):
+    def cb(self, src, rgb):  #, d):
         header = rgb.header
         b = CvBridge()
         rgb = b.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
@@ -75,7 +91,7 @@ class Predictor(object):
 
         imgs = []
 
-        for detrect in zip(ubd.pos_x, ubd.pos_y, ubd.width, ubd.height):
+        for detrect in get_rects(src):
             detrect = self.factrect(detrect)
             det_rgb = cutout(rgb, detrect)
             #det_d = cutout(d, detrect)
@@ -103,10 +119,11 @@ class Predictor(object):
             # Visualization
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()
-                for detrect, alpha in zip(zip(ubd.pos_x, ubd.pos_y, ubd.width, ubd.height), preds):
+                for detrect, alpha in zip(get_rects(src), preds):
                     l, t, w, h = self.factrect(detrect)
                     px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
                     py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
+                    cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
                     cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
                     cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2, cv2.CV_AA)
                     cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2, cv2.CV_AA)
@@ -117,9 +134,10 @@ class Predictor(object):
     def factrect(self, rect):
         x, y, w, h = rect
 
+        # NOTE: Order is important here.
         h = int(round(min(self.hfact*w, h) if self.hfact > 0 else h))
-        w = int(round(self.wfact*w))
         x = x + int(round((1 - self.wfact)/2*w))
+        w = int(round(self.wfact*w))
 
         return x, y, w, h
 

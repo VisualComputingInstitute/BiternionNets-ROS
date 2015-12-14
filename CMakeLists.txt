@@ -56,7 +56,7 @@ include_directories(
 ## Declare a cpp executable
 add_executable(count_ubd src/count_ubd.cpp)
 add_executable(dump_ubd src/dump_ubd.cpp)
-add_executable(dump_tracks src/dump_tracks.cpp src/mkpath.c)
+add_executable(dump_tracks src/dump_tracks.cpp src/mkpath.c src/subtractbg.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
