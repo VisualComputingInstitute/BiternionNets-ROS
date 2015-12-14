@@ -4,6 +4,7 @@
     <arg name="factor" default="-1" />
     <arg name="hfactor" default="$(arg factor)" />
     <arg name="wfactor" default="$(arg factor)" />
+    <arg name="subbg" default="false" />
     <arg name="src" default="rear" />
     <arg name="track2d" default="/spencer/perception_internal/people_tracking/rgbd_$(arg src)_top/tracked_persons_2d" />
     <arg name="rgb" default="/spencer/sensors/rgbd_$(arg src)_top/rgb/image_raw" />
@@ -13,6 +14,7 @@
         <param name="dir" value="$(arg dir)" />
         <param name="hfactor" value="$(arg hfactor)" />
         <param name="wfactor" value="$(arg wfactor)" />
+        <param name="subbg" value="$(arg subbg)" />
         <param name="track2d" value="$(arg track2d)" />
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />
