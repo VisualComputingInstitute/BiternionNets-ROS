@@ -103,14 +103,14 @@ void cb(const TrackedPersons2d::ConstPtr& t2d, const sensor_msgs::ImageConstPtr&
 
         // Save.
         // TODO: setw
-        std::string fname = g_dir + "/" + to_s(p2d.track_id) + "_" + to_s(g_counter);
+        std::string fname = g_dir + "/" + to_s(p2d.track_id) + "_" + to_s(rgb->header.seq);
         if(!cv::imwrite(fname + "_rgb.png", rgbimg)) {
             ROS_ERROR("Error writing image %s", (fname + "_rgb.png").c_str());
         }
 
         dump_32FC1(fname + "_d.csv", dimg);
 
-        std::cout << "\rDumping: " << g_counter << std::flush;
+        std::cout << "\rDumping: " << rgb->header.seq << std::flush;
         g_counter++;
     }
 }
