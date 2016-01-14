@@ -1,12 +1,14 @@
-from os import listdir, remove
-from os.path import join
+from os import listdir, remove, makedirs
+from os.path import join, exists
 from shutil import copy2 as cp
 
-datadir = '.'
+datadir = './dump'
+new_dir = './new_dump'
 end = 'rgb.png'
 
 from_dict = {}
 to_dict = {}
+
 
 #form from_dict
 f_d = join(datadir,'dumps')
@@ -14,7 +16,7 @@ for f in listdir(f_d):
   if(not f.startswith('.')):
     p_d = {}
     for p in listdir(join(f_d,f)):
-      if p.startswith('.DS') or not p.endswith('.png'):
+      if not p.endswith('.png'):
         continue
       trid,pid,_ = p.rsplit('_')
       curr = p_d.get(trid)
@@ -29,8 +31,14 @@ for f in listdir(f_d):
 d = {'4p':['backleft','backright', 'frontleft', 'frontright'], '4x':['back', 'front', 'left', 'right']}
 to_dict = {'4p':{},'4x':{}}
 
+#create all dirs we need
 for k in d:
-    k = '4p'
+  for el in d[k]:
+    path = join(new_dir, k, el)
+    if not exists(path):
+      makedirs(path)
+
+for k in d:
     for el in d[k]:
         to_dict[k][el] = {}
         p = join(datadir, k, el)
@@ -48,13 +56,15 @@ for k in d:
 #min and max inside every folder with respect to track id and name
 
 def crem(t,a,n,tid,pid,end):
-    print(from_dict)
     f_name = join(datadir, 'dumps', n, "_".join([tid, pid, end]))
-    t_name = join(datadir, t, a, "_".join([n, tid, pid, end]))
-    print(f_name, t_name)
+    t_name = join(new_dir, t, a, "_".join([n, tid, pid, end]))
+    csvf_name = join(datadir, 'dumps', n, "_".join([tid, pid, 'd.csv']))
+    csvt_name = join(new_dir, t, a, "_".join([n, tid, pid, 'd.csv']))
+    #print(f_name, t_name)
     cp(f_name, t_name)
+    cp(csvf_name, csvt_name)
     from_dict[n][tid].remove(pid)
-    remove(f_name)
+    #remove(f_name)
 
 for t in to_dict:
     for a in to_dict[t]:
@@ -71,4 +81,3 @@ for t in to_dict:
                            if min_pid<=pid<=max_pid:
                                crem(t, a, n, tid, pid, end)
 
-# what to do with unreplaced old entries? Delete
