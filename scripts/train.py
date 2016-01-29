@@ -52,7 +52,7 @@ def merge4to8(X, y, n):
     idx4x = n['4x'].index(n4p)
     y4x, y4p = y['4x'][idx4x], y['4p'][idx4p]
     y8[idx4p] = y4x + y4p if not (y4x == 0 and y4p == 3) else 7
-  return X['4p'].copy(), y8, n['4p'].copy()
+  return X['4p'].copy(), y8, copy.deepcopy(n['4p'])
 
 def flipped(X, y, n, old, new):
     indices = np.where(y == old)[0]
@@ -73,6 +73,17 @@ def dopred_deg(model, aug, X, batchsize=100):
 
 def maad_from_deg(preds, reals):
   return np.rad2deg(np.abs(np.arctan2(np.sin(np.deg2rad(reals-preds)), np.cos(np.deg2rad(reals-preds)))))
+
+def skip_one_classers(X,y,n):
+  X['4p'] = np.array([X['4p'][i] for i,name in enumerate(n['4p']) if name in n['4x']])
+  y['4p'] = np.array([y['4p'][i] for i,name in enumerate(n['4p']) if name in n['4x']])
+  n['4p'] = [name for name in n['4p'] if name in n['4x']]
+
+  X['4x'] = np.array([X['4x'][i] for i,name in enumerate(n['4x']) if name in n['4p']])
+  y['4x'] = np.array([y['4x'][i] for i,name in enumerate(n['4x']) if name in n['4p']])
+  n['4x'] = [name for name in n['4x'] if name in n['4p']]
+  
+  return X, y, n
 
 def prepare_data(datadir):
   classes4x = ['front','right','back','left']
@@ -102,12 +113,17 @@ def prepare_data(datadir):
     Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name),
       testname='lucas', skip=['.', 'dog', 'dog2', 'doggy'], ydict=ydict
     )
+
+  Xtr,ytr,ntr = skip_one_classers(Xtr,ytr,ntr)
+  Xte,yte,nte = skip_one_classers(Xte,yte,nte)
+
   for name in Xtr:
     print(name)
     print("Trainset: X({}), y({})".format(Xtr[name].shape, ytr[name].shape))
     print("Testset: X({}), y({})".format(Xte[name].shape, yte[name].shape))
     print("Random label: {}".format(set(ytr[name])))
-  # Do flip-augmentation beforehand.
+
+  #Do flip-augmentation beforehand.
 
   Xtr['4x'], ytr['4x'], ntr['4x'] = flipall(Xtr['4x'], ytr['4x'], ntr['4x'], flips=[
       (classnums4x['front'], classnums4x['front']),
@@ -137,7 +153,6 @@ def prepare_data(datadir):
       (classnums4p['backright'], classnums4p['backleft'])],
       append=False
     )
-  
   
   # Merge 4x and 4p into 8
   Xtr['8'], ytr['8'], ntr['8'] = merge4to8(Xtr, ytr, ntr)
@@ -189,7 +204,7 @@ if __name__ == '__main__':
 
   aug = AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
   net = mknet()
-  printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
+  #printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
 
   costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
   print("Costs: {}".format(' ; '.join(map(str, costs))))
@@ -197,8 +212,8 @@ if __name__ == '__main__':
   dostats(net, aug, Xtr, batchsize=1000)
 
   # Save the network.
-  #printnow("Saving the learned network to {}", args.output)
-  #np.savez_compressed(args.output, net.__getstate__())
+  printnow("Saving the learned network to {}", args.output)
+  np.savez_compressed(args.output, net.__getstate__())
 
   # Prediction, TODO: Move to ROS node.
   s = np.argsort(nte)
