@@ -62,7 +62,7 @@ class Predictor(object):
 
         # Create and load the network.
         self.net = mknet()
-        self.net.__setstate__(np.load(modelname))
+        self.net.__setstate__(np.load(modelname)['arr_0'])
         self.net.evaluate()
 
         # Do a fake forward-pass for precompilation.
@@ -125,15 +125,14 @@ class Predictor(object):
                     py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
                     cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
                     cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
-                    cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2, cv2.CV_AA)
-                    cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2, cv2.CV_AA)
+                    cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
+                    cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
                 vismsg = b.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
                 vismsg.header = header  # TODO: Seems not to work!
                 self.pub_vis.publish(vismsg)
 
     def factrect(self, rect):
         x, y, w, h = rect
-
         # NOTE: Order is important here.
         h = int(round(min(self.hfact*w, h) if self.hfact > 0 else h))
         x = x + int(round((1 - self.wfact)/2*w))
