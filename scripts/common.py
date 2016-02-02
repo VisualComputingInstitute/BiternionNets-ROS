@@ -52,3 +52,10 @@ def ensemble_degrees(angles):
   NOTE: returned angle is in radians (for now).
   """
   return np.arctan2(np.mean(np.sin(np.deg2rad(angles)), axis=0), np.mean(np.cos(np.deg2rad(angles)), axis=0))
+
+
+def ensemble_biternions(biternions):
+    """
+    That's actually easy: it's just vectors, so we can just average!
+    """
+    return np.mean(biternions, axis=0)

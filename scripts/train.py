@@ -11,7 +11,7 @@ from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 
 from training_utils import dotrain, dostats, dopred
 from df_extras import BiternionCriterion
-from common import mknet, deg2bit, bit2deg, ensemble_degrees
+from common import mknet, deg2bit, bit2deg, ensemble_degrees, ensemble_biternions
 
 pjoin = os.path.join
 
@@ -68,8 +68,8 @@ def flipall(X, y, n, flips, append=True):
   else:
     return np.concatenate(fx), np.concatenate(fy), sum(fn,list())
 
-def dopred_deg(model, aug, X, batchsize=100):
-  return np.rad2deg(dopred(model, aug, X, ensembling=ensemble_degrees, output2preds=lambda x: x, batchsize=batchsize))
+def dopred_bit(model, aug, X, batchsize=100):
+    return dopred(model, aug, X, ensembling=ensemble_biternions, output2preds=lambda x: x, batchsize=batchsize)
 
 def maad_from_deg(preds, reals):
   return np.rad2deg(np.abs(np.arctan2(np.sin(np.deg2rad(reals-preds)), np.cos(np.deg2rad(reals-preds)))))
@@ -218,16 +218,16 @@ if __name__ == '__main__':
   # Prediction, TODO: Move to ROS node.
   s = np.argsort(nte)
   Xte,yte,Xte_f,yte_f = Xte[s],yte[s],Xte_f[s],yte_f[s]
-  
+
   printnow("(TEMP) Doing predictions.", args.output)
-  y_pred = bit2deg(dopred_deg(net, aug, Xte))
-  
-  y_pred_f = dopred_deg(net, aug, Xte_f)
+  y_pred = bit2deg(dopred_bit(net, aug, Xte))
+
+  y_pred_f = dopred_bit(net, aug, Xte_f)
   y_pred_f[:,1]=-y_pred_f[:,1]
   y_pred_f = bit2deg(y_pred_f)
-  
+
   res = maad_from_deg(y_pred, bit2deg(yte))
-  res2 = maad_from_deg(np.rad2deg(ensemble_degrees([y_pred,y_pred_f])),bit2deg(yte))
+  res2 = maad_from_deg(ensemble_degrees([y_pred,y_pred_f]), bit2deg(yte))
   print("Finished predictions")
   print("Mean angle error for train images             = ", res.mean())
   print("Mean angle error for flipped augmented images = ", res2.mean())
