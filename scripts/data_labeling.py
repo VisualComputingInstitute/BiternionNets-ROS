@@ -12,21 +12,22 @@ to_dict = {}
 
 #form from_dict
 f_d = datadir
-f_d = join(datadir,'dumps')
+f_d = join(datadir,'50')
 for f in listdir(f_d):
   if(not f.startswith('.')):
-    p_d = {}
-    for p in listdir(join(f_d,f)):
-      if not p.endswith('.png'):
-        continue
-      trid,pid,_ = p.rsplit('_')
-      curr = p_d.get(trid)
-      if curr:
-        curr.append(pid)
-        p_d[trid] = curr
+    #p_d = {}
+    #for p in listdir(join(f_d,f)):
+    if not f.endswith('.png'):
+      continue
+    n,trid,pid,_ = f.rsplit('_')
+    curr = from_dict.get(n)
+    if curr is not None:
+      if curr.get(trid) is not None:
+        curr[trid].append(pid)
       else:
-        p_d[trid] = [pid]
-    from_dict[f] = p_d
+        from_dict[n][trid] = [pid]
+    else:
+      from_dict[n] = {trid:[pid]}
 
 #form to_dict
 d = {'4p':['backleft','backright', 'frontleft', 'frontright'], '4x':['back', 'front', 'left', 'right']}
@@ -56,7 +57,7 @@ for k in d:
 #iterate in to_dict and copy pics from from_dict with the same name, tid and pid
 
 def crem(t,a,n,tid,pid,end):
-    f_name = join(datadir, 'dumps', n, "_".join([tid, pid, end]))
+    f_name = join(datadir, '50', "_".join([n, tid, pid, end]))
     t_name = join(new_dir, t, a, "_".join([n, tid, pid, end]))
     #csvf_name = join(datadir, 'dumps', n, "_".join([tid, pid, 'd.csv']))
     #csvt_name = join(new_dir, t, a, "_".join([n, tid, pid, 'd.csv']))
