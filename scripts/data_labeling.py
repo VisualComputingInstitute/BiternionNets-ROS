@@ -2,8 +2,8 @@ from os import listdir, remove, makedirs
 from os.path import join, exists
 from shutil import copy2 as cp
 
-datadir = './dump'
-new_dir = './new_dump'
+datadir = '/work/kurin/spencer_data/dump'
+new_dir = '/work/kurin/spencer_data/new_dump'
 end = 'rgb.png'
 
 from_dict = {}
@@ -11,6 +11,7 @@ to_dict = {}
 
 
 #form from_dict
+f_d = datadir
 f_d = join(datadir,'dumps')
 for f in listdir(f_d):
   if(not f.startswith('.')):
@@ -52,32 +53,28 @@ for k in d:
                 else:
                     to_dict[k][el][name][trid].append(pid)
 
-#iterate inside to_dict and copy all pics from from_dict that are inside
-#min and max inside every folder with respect to track id and name
+#iterate in to_dict and copy pics from from_dict with the same name, tid and pid
 
 def crem(t,a,n,tid,pid,end):
     f_name = join(datadir, 'dumps', n, "_".join([tid, pid, end]))
     t_name = join(new_dir, t, a, "_".join([n, tid, pid, end]))
-    csvf_name = join(datadir, 'dumps', n, "_".join([tid, pid, 'd.csv']))
-    csvt_name = join(new_dir, t, a, "_".join([n, tid, pid, 'd.csv']))
-    #print(f_name, t_name)
+    #csvf_name = join(datadir, 'dumps', n, "_".join([tid, pid, 'd.csv']))
+    #csvt_name = join(new_dir, t, a, "_".join([n, tid, pid, 'd.csv']))
     cp(f_name, t_name)
-    cp(csvf_name, csvt_name)
-    from_dict[n][tid].remove(pid)
+    #cp(csvf_name, csvt_name)
     #remove(f_name)
 
+print("Generating in progress...")
+n_im = 0
 for t in to_dict:
     for a in to_dict[t]:
         for n in to_dict[t][a]:
             for tid in to_dict[t][a][n]:
                 pids = to_dict[t][a][n][tid]
-                min_pid = min(pids)
-                max_pid = max(pids)
-                f_pids = from_dict.get(n, None)
-                if f_pids:
-                    f_pids = from_dict[n].get(tid, None)
-                    if f_pids:
-                        for pid in f_pids:
-                           if min_pid<=pid<=max_pid:
-                               crem(t, a, n, tid, pid, end)
+                if pids is not None:
+                  for p in pids:
+                    if p in from_dict[n].get(tid, []):
+                      crem(t,a,n,tid,p,end)
+                      n_im+=1
+print "Finished. Copied %s images" % (n_im)
 
