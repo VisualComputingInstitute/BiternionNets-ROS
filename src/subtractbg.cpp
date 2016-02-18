@@ -2,7 +2,7 @@
 #include <iostream>
 #include <math.h>
 
-float mediandepth(const cv::Mat &m)
+float mediandepth(const cv::Mat &m, double bgcoeff)
 {
     std::vector<float> depths;
     depths.reserve(m.cols*m.rows);
@@ -18,13 +18,13 @@ float mediandepth(const cv::Mat &m)
     }
 
     // Sort the first half.
-    std::nth_element(depths.begin(), depths.begin() + depths.size()/2, depths.end());
+    std::nth_element(depths.begin(), depths.begin() + depths.size() * bgcoeff, depths.end());
 
     // And there we can access the median.
-    return depths[depths.size()/2];
+    return depths[depths.size() * bgcoeff];
 }
 
-void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh)
+void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh, float bgcoeff)
 {
     // We require this, otherwise there's no correspondence!
     // TODO: Fail better.
@@ -33,7 +33,7 @@ void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh)
         return;
     }
 
-    float md = mediandepth(d);
+    float md = mediandepth(d, bgcoeff);
     std::cout << "Median depth: " << md << std::endl;
 
     for(size_t y = 0 ; y < d.rows ; ++y) {

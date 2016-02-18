@@ -19,7 +19,7 @@
 #include <spencer_tracking_msgs/TrackedPersons2d.h>
 
 extern "C" int mkpath(const char *path);
-void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh=1.0f);
+void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh=1.0f, float bgcoeff=0.5f);
 
 using namespace spencer_tracking_msgs;
 
@@ -28,6 +28,7 @@ std::string g_dir;
 double g_hfactor;
 double g_wfactor;
 bool g_subbg;
+double g_bgcoeff;
 
 // For filename and stats.
 size_t g_counter = 0;
@@ -99,7 +100,7 @@ void cb(const TrackedPersons2d::ConstPtr& t2d, const sensor_msgs::ImageConstPtr&
         cv::Mat rgbimg(cv_rgb->image, bbox_rgb);
         cv::Mat dimg(cv_d->image, bbox_d);
         if(g_subbg)
-            subtractbg(rgbimg, dimg);
+            subtractbg(rgbimg, dimg, 1.0, g_bgcoeff);
 
         // Save.
         // TODO: setw
@@ -124,6 +125,7 @@ int main(int argc, char* argv[])
     nh_.param("dir", g_dir, std::string("."));
     nh_.param("hfactor", g_hfactor, -1.0);
     nh_.param("wfactor", g_wfactor,  1.0);
+    nh_.param("bgcoeff", g_bgcoeff, 0.5);
     g_wfactor = g_wfactor <= 0 ? 1.0 : g_wfactor;
     nh_.param("subbg", g_subbg, false);
 
