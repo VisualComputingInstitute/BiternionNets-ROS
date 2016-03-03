@@ -3,7 +3,6 @@
 
 from os.path import abspath, expanduser, join as pjoin
 from sys import stderr
-
 import cv2
 import rospy
 from cv_bridge import CvBridge
@@ -22,6 +21,17 @@ except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
     from spencer_tracking_msgs.msg import TrackedPersons2d
 
+def filterdepth(depth_map, bgcoeff):
+  dm = depth_map[~np.isnan(depth_map)]
+  return np.percentile(dm, bgcoeff*100)
+
+def subtractbg(rgb, dept, threshold, bgcoeff):
+  rgb.flags.writeable = True #super cool hack
+  #rgb = rgb.copy()
+  d = filterdepth(dept, bgcoeff)
+  rgb[np.isnan(dept)] = [0,0,0]
+  rgb[d+threshold < dept] = [0,0,0]
+  return rgb
 
 def cutout(img, detrect):
     x, y, w, h = detrect
@@ -78,31 +88,28 @@ class Predictor(object):
             raise ValueError("Unknown source type: " + src)
 
         subs.append(message_filters.Subscriber(rospy.get_param("~rgb", "/head_xtion/rgb/image_rect_color"), ROSImage))
-        #message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage),
-
-        ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.1)
+        subs.append(message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage))
+        ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.5)
         ts.registerCallback(self.cb)
 
-    def cb(self, src, rgb):  #, d):
+    def cb(self, src, rgb, d):
         header = rgb.header
         b = CvBridge()
         rgb = b.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
-        #d = b.imgmsg_to_cv2(d)
-
+        d = b.imgmsg_to_cv2(d)
         imgs = []
-
         for detrect in get_rects(src):
             detrect = self.factrect(detrect)
             det_rgb = cutout(rgb, detrect)
-            #det_d = cutout(d, detrect)
-
+            det_d = cutout(d, detrect)
+            
             # Resize and stick into the minibatch.
-            im = cv2.resize(det_rgb, (50, 50))
+            im = subtractbg(det_rgb, det_d, 1.0, 0.5)
+            im = cv2.resize(im, (50, 50))
+            
             im = np.rollaxis(im, 2, 0)
             im = im[:,2:-2,2:-2]  # TODO: Augmentation?
-            print(im.shape)
             imgs.append(im.astype(df.floatX)/255)
-
             stderr.write("\r{}".format(self.counter)) ; stderr.flush()
             self.counter += 1
 
@@ -115,7 +122,6 @@ class Predictor(object):
                 angles=list(preds),
                 confidences=[0.83] * len(imgs)
             ))
-
             # Visualization
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()

@@ -8,7 +8,7 @@
     <arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_$(arg cam)_top/upper_body_detector/detections" />
     <arg name="src" default="tra" />
     <arg name="rgb" default="/spencer/sensors/rgbd_$(arg cam)_top/rgb/image_raw" />
-    <!--<arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect" />-->
+    <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
 
     <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="true">
         <param name="model" value="$(arg model)" />
@@ -18,5 +18,6 @@
         <param name="ubd" value="$(arg ubd)" />
         <param name="src" value="$(arg src)" />
         <param name="rgb" value="$(arg rgb)" />
+        <param name="d" value="$(arg d)" />
     </node>
 </launch>
