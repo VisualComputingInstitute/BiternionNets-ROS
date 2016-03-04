@@ -9,6 +9,7 @@ from cv_bridge import CvBridge
 import message_filters
 from sensor_msgs.msg import Image as ROSImage
 from biternion.msg import HeadOrientations
+from visualization_msgs.msg import Marker
 
 import numpy as np
 import DeepFried2 as df
@@ -21,14 +22,12 @@ except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
     from spencer_tracking_msgs.msg import TrackedPersons2d
 
-def filterdepth(depth_map, bgcoeff):
-  dm = depth_map[~np.isnan(depth_map)]
-  return np.percentile(dm, bgcoeff*100)
 
 def subtractbg(rgb, dept, threshold, bgcoeff):
-  rgb.flags.writeable = True #super cool hack
-  #rgb = rgb.copy()
-  d = filterdepth(dept, bgcoeff)
+  #rgb.flags.writeable = True #super cool hack
+  rgb = rgb.copy()
+  d = dept[~np.isnan(dept)]
+  d = np.percentile(d, bgcoeff*100)
   rgb[np.isnan(dept)] = [0,0,0]
   rgb[d+threshold < dept] = [0,0,0]
   return rgb
@@ -41,7 +40,6 @@ def cutout(img, detrect):
     y2, x2 = y+h, x+w
     y1, x1 = max(y, 0), max(x, 0)
     return img[y1:y2, x1:x2]
-
 
 def get_rects(msg):
     if isinstance(msg, TrackedPersons2d):
@@ -122,6 +120,7 @@ class Predictor(object):
                 angles=list(preds),
                 confidences=[0.83] * len(imgs)
             ))
+            
             # Visualization
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()
