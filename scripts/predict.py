@@ -48,6 +48,26 @@ def get_rects(msg):
     else:
         raise TypeError("Unknown source type: {}".format(type(msg)))
 
+def make_marker():
+  marker = Marker()
+  marker.type = Marker.CUBE
+  #marker.header.frame_id = "head_angle"
+  #marker.header.stamp = rospy.Time.now()
+  #marker.pose.position.x = 50 
+  #marker.pose.position.y = 0
+  #marker.pose.position.z = 0
+  #marker.pose.orientation.x = 1.0                                               
+  #marker.pose.orientation.y = 100.0                                               
+  #marker.pose.orientation.z = 1.0                                               
+  #marker.pose.orientation.w = 1.0                                               
+  marker.scale.x = 0.25 
+  marker.scale.y = 0.5
+  marker.scale.z = 2
+  marker.color.r = 1                                                            
+  marker.color.g = 1                                                            
+  marker.color.b = 1
+  marker.color.a = 1 #remove line to make marker invisible
+  return marker  
 
 class Predictor(object):
     def __init__(self):
@@ -66,7 +86,7 @@ class Predictor(object):
         topic = rospy.get_param("~topic", "/tmpluc")
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
-
+        self.pub_mark = rospy.Publisher(topic + '/marker', Marker, queue_size=100)
         # Create and load the network.
         self.net = mknet()
         self.net.__setstate__(np.load(modelname)['arr_0'])
@@ -109,6 +129,7 @@ class Predictor(object):
             imgs.append(im.astype(df.floatX)/255)
             stderr.write("\r{}".format(self.counter)) ; stderr.flush()
             self.counter += 1
+            self.pub_mark.publish(make_marker())        
 
         if 0 < len(imgs):
             preds = bit2deg(self.net.forward(np.array(imgs)))
@@ -119,7 +140,6 @@ class Predictor(object):
                 angles=list(preds),
                 confidences=[0.83] * len(imgs)
             ))
-            
             # Visualization
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()
