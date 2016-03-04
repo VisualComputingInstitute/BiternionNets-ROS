@@ -26,8 +26,7 @@ except ImportError:
 def subtractbg(rgb, dept, threshold, bgcoeff):
   #rgb.flags.writeable = True #super cool hack
   rgb = rgb.copy()
-  d = dept[~np.isnan(dept)]
-  d = np.percentile(d, bgcoeff*100)
+  d = np.nanpercentile(dept, bgcoeff*100)
   rgb[np.isnan(dept)] = [0,0,0]
   rgb[d+threshold < dept] = [0,0,0]
   return rgb
