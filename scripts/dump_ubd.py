@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# encoding: utf-8
 
 from os.path import abspath, expanduser, join as pjoin
 import os
