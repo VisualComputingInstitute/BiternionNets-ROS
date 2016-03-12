@@ -2,9 +2,13 @@
 # encoding: utf-8
 
 from os.path import abspath, expanduser, join as pjoin
-from sys import stderr
+import sys
+from importlib import import_module
+
 import cv2
+
 import rospy
+from rospkg import RosPack
 from cv_bridge import CvBridge
 import message_filters
 from sensor_msgs.msg import Image as ROSImage
@@ -60,17 +64,18 @@ class Predictor(object):
         if self.wfact <= 0:
             self.wfact = 1
 
-        modelname = abspath(expanduser(rospy.get_param("~model", ".")))
-
-        rospy.loginfo("Predicting {}-bodies using {}".format(self.hfact if self.hfact > 0 else "full", modelname))
+        modelname = rospy.get_param("~model", "head_50_50")
+        weightsname = abspath(expanduser(rospy.get_param("~weights", ".")))
+        rospy.loginfo("Predicting {}-bodies using {} & {}".format(self.hfact if self.hfact > 0 else "full", modelname, weightsname))
 
         topic = rospy.get_param("~topic", "/tmpluc")
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
 
         # Create and load the network.
-        self.net = mknet()
-        self.net.__setstate__(np.load(modelname)['arr_0'])
+        netlib = import_module("nets." + modelname)
+        self.net = netlib.mknet()
+        self.net.__setstate__(np.load(weightsname))
         self.net.evaluate()
 
         # Do a fake forward-pass for precompilation.
@@ -148,6 +153,10 @@ class Predictor(object):
 
 if __name__ == "__main__":
     rospy.init_node("biternion_predict")
+
+    # Add the "models" directory to the path!
+    sys.path.append(pjoin(RosPack().get_path('biternion'), 'scripts'))
+
     p = Predictor()
     rospy.spin()
     rospy.loginfo("Predicted a total of {} UBDs.".format(p.counter))

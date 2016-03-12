@@ -1,5 +1,6 @@
 <launch>
-    <arg name="model" default="/home/kurin/spencer/biternion-net.npz" />
+    <arg name="model" default="head_50_50" />
+    <arg name="weights" default="$(find biternion)/models/head_50_50.npz" />
     <arg name="factor" default="-1" />
     <arg name="hfactor" default="0.5" />
     <arg name="wfactor" default="0.8" />
@@ -12,6 +13,7 @@
 
     <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="true">
         <param name="model" value="$(arg model)" />
+        <param name="weights" value="$(arg weights)" />
         <param name="hfactor" value="$(arg hfactor)" />
         <param name="wfactor" value="$(arg wfactor)" />
         <param name="tra" value="$(arg tra)" />
