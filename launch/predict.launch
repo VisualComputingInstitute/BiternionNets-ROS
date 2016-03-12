@@ -9,7 +9,7 @@
     <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
     <arg name="topic" default="/spencer/perception/head_orientations" />
 
-    <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="true">
+    <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="false">
         <param name="model" value="$(arg model)" />
         <param name="weights" value="$(arg weights)" />
         <param name="tra" value="$(arg tra)" />
