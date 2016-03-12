@@ -10,7 +10,6 @@ from importlib import import_module
 
 import DeepFried2 as df
 from lbtoolbox.util import flipany, printnow
-from lbtoolbox.thutil import count_params
 
 from training_utils import dotrain, dostats, dopred
 from df_extras import BiternionCriterion
@@ -207,12 +206,12 @@ if __name__ == '__main__':
   ytr = ytr.astype(df.floatX)
   yte = yte.astype(df.floatX)
   yte_f = yte_f.astype(df.floatX)
-  printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000)
+  printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000.0)
 
   netlib = import_module("nets." + args.net)
   aug = netlib.mkaug(Xtr, ytr)
   net = netlib.mknet()
-  #printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
+  printnow('Network has {:.3f}M params in {} layers', df.utils.count_params(net)/1000.0/1000.0, len(net.modules))
 
   costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
   print("Costs: {}".format(' ; '.join(map(str, costs))))
