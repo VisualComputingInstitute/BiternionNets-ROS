@@ -220,7 +220,7 @@ if __name__ == '__main__':
 
   # Save the network.
   printnow("Saving the learned network to {}", args.output)
-  np.savez_compressed(args.output, net.__getstate__())
+  np.save(args.output, net.__getstate__())
 
   # Prediction, TODO: Move to ROS node.
   s = np.argsort(nte)
