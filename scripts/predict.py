@@ -62,7 +62,7 @@ class Predictor(object):
         weightsname = abspath(expanduser(rospy.get_param("~weights", ".")))
         rospy.loginfo("Predicting using {} & {}".format(modelname, weightsname))
 
-        topic = rospy.get_param("~topic", "/tmpluc")
+        topic = rospy.get_param("~topic", "/biternion")
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
 

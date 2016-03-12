@@ -7,6 +7,7 @@
     <arg name="src" default="tra" />
     <arg name="rgb" default="/spencer/sensors/rgbd_$(arg cam)_top/rgb/image_raw" />
     <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
+    <arg name="topic" default="/spencer/perception/head_orientations" />
 
     <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="true">
         <param name="model" value="$(arg model)" />
@@ -16,5 +17,6 @@
         <param name="src" value="$(arg src)" />
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />
+        <param name="topic" value="$(arg topic)" />
     </node>
 </launch>
