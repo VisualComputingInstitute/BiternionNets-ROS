@@ -72,12 +72,14 @@ class Predictor(object):
         self.net.__setstate__(np.load(weightsname))
         self.net.evaluate()
 
-        # Do a fake forward-pass for precompilation.
-        self.net.forward(np.zeros((1,3,46,46), df.floatX))
-
         self.aug = netlib.mkaug(None, None)
         self.preproc = netlib.preproc
         self.factrect = netlib.cutout
+
+        # Do a fake forward-pass for precompilation.
+        im = cutout(np.zeros((480,640,3), np.uint8), 0, 0, 150, 450)
+        im = next(self.aug.augimg_pred(self.preproc(im), fast=True))
+        self.net.forward(np.array([im]))
 
         src = rospy.get_param("~src", "tra")
         subs = []
@@ -112,7 +114,7 @@ class Predictor(object):
             self.counter += 1
 
         if 0 < len(imgs):
-            bits = [self.net.forward(b) for b in self.augbatch_pred(np.array(imgs), fast=True)]
+            bits = [self.net.forward(batch) for batch in self.aug.augbatch_pred(np.array(imgs), fast=True)]
             preds = bit2deg(ensemble_biternions(bits))
             print(preds)
 
