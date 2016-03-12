@@ -37,3 +37,12 @@ def mknet():
 
 def mkaug(Xtr, ytr):
   return AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
+
+def preproc(im):
+  im = cv2.resize(im, (50, 50))
+  im = np.rollaxis(im, 2, 0)
+  return im.astype(df.floatX)/255
+
+def cutout(x,y,w,h):
+  # Keep the full rectangle.
+  return x,y,w,h

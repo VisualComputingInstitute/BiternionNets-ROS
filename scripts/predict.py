@@ -5,6 +5,7 @@ from os.path import abspath, expanduser, join as pjoin
 import sys
 from importlib import import_module
 
+import numpy as np
 import cv2
 
 import rospy
@@ -15,9 +16,9 @@ from sensor_msgs.msg import Image as ROSImage
 from biternion.msg import HeadOrientations
 from visualization_msgs.msg import Marker
 
-import numpy as np
 import DeepFried2 as df
-from common import mknet, bit2deg
+
+from common import bit2deg, ensemble_biternions
 
 # Distinguish between STRANDS and SPENCER.
 try:
@@ -36,9 +37,7 @@ def subtractbg(rgb, dept, threshold, bgcoeff):
   rgb[d+threshold < dept] = [0,0,0]
   return rgb
 
-def cutout(img, detrect):
-    x, y, w, h = detrect
-
+def cutout(img, x, y, w, h):
     # Need to be careful for negative indices in conjunction with
     # numpy's (and thus OpenCV's) wrap-around.
     y2, x2 = y+h, x+w
@@ -59,14 +58,9 @@ class Predictor(object):
         rospy.loginfo("Initializing biternion predictor")
         self.counter = 0
 
-        self.hfact = float(rospy.get_param("~hfactor", "-1.0"))
-        self.wfact = float(rospy.get_param("~wfactor", "1.0"))
-        if self.wfact <= 0:
-            self.wfact = 1
-
         modelname = rospy.get_param("~model", "head_50_50")
         weightsname = abspath(expanduser(rospy.get_param("~weights", ".")))
-        rospy.loginfo("Predicting {}-bodies using {} & {}".format(self.hfact if self.hfact > 0 else "full", modelname, weightsname))
+        rospy.loginfo("Predicting using {} & {}".format(modelname, weightsname))
 
         topic = rospy.get_param("~topic", "/tmpluc")
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
@@ -80,6 +74,10 @@ class Predictor(object):
 
         # Do a fake forward-pass for precompilation.
         self.net.forward(np.zeros((1,3,46,46), df.floatX))
+
+        self.aug = netlib.mkaug(None, None)
+        self.preproc = netlib.preproc
+        self.factrect = netlib.cutout
 
         src = rospy.get_param("~src", "tra")
         subs = []
@@ -102,22 +100,20 @@ class Predictor(object):
         d = b.imgmsg_to_cv2(d)
         imgs = []
         for detrect in get_rects(src):
-            detrect = self.factrect(detrect)
-            det_rgb = cutout(rgb, detrect)
-            det_d = cutout(d, detrect)
-            
-            # Resize and stick into the minibatch.
+            detrect = self.factrect(*detrect)
+            det_rgb = cutout(rgb, *detrect)
+            det_d = cutout(d, *detrect)
+
+            # Preprocess and stick into the minibatch.
             im = subtractbg(det_rgb, det_d, 1.0, 0.5)
-            im = cv2.resize(im, (50, 50))
-            
-            im = np.rollaxis(im, 2, 0)
-            im = im[:,2:-2,2:-2]  # TODO: Augmentation?
-            imgs.append(im.astype(df.floatX)/255)
-            stderr.write("\r{}".format(self.counter)) ; stderr.flush()
+            im = self.preproc(im)
+            imgs.append(im)
+            sys.stderr.write("\r{}".format(self.counter)) ; sys.stderr.flush()
             self.counter += 1
 
         if 0 < len(imgs):
-            preds = bit2deg(self.net.forward(np.array(imgs)))
+            bits = [self.net.forward(b) for b in self.augbatch_pred(np.array(imgs), fast=True)]
+            preds = bit2deg(ensemble_biternions(bits))
             print(preds)
 
             self.pub.publish(HeadOrientations(
@@ -125,12 +121,12 @@ class Predictor(object):
                 angles=list(preds),
                 confidences=[0.83] * len(imgs)
             ))
-            
+
             # Visualization
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()
                 for detrect, alpha in zip(get_rects(src), preds):
-                    l, t, w, h = self.factrect(detrect)
+                    l, t, w, h = self.factrect(*detrect)
                     px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
                     py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
                     cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
@@ -140,15 +136,6 @@ class Predictor(object):
                 vismsg = b.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
                 vismsg.header = header  # TODO: Seems not to work!
                 self.pub_vis.publish(vismsg)
-
-    def factrect(self, rect):
-        x, y, w, h = rect
-        # NOTE: Order is important here.
-        h = int(round(min(self.hfact*w, h) if self.hfact > 0 else h))
-        x = x + int(round((1 - self.wfact)/2*w))
-        w = int(round(self.wfact*w))
-
-        return x, y, w, h
 
 
 if __name__ == "__main__":

@@ -25,3 +25,11 @@ def ensemble_biternions(biternions):
     That's actually easy: it's just vectors, so we can just average!
     """
     return np.mean(biternions, axis=0)
+
+
+def cutout_hwfact(x,y,w,h, hfact, wfact):
+    # NOTE: Order is important here.
+    h = int(round(min(hfact*w, h) if hfact > 0 else h))
+    x = x + int(round((1 - wfact)/2*w))
+    w = int(round(wfact*w))
+    return x, y, w, h
