@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 import DeepFried2 as df
 from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 from df_extras import Flatten, Biternion
@@ -41,3 +43,14 @@ def mknet():
 
 def mkaug(Xtr, ytr):
   return AugmentationPipeline(Xtr, ytr, Cropper((220,76)))
+
+def preproc(im):
+  im = cv2.resize(im, (80, 240))
+  im = np.rollaxis(im, 2, 0)
+  return im.astype(df.floatX)/255
+
+def cutout(x,y,w,h):
+  # Here we use the full box.
+  # We know from the detector that full-height = 3x width.
+  # If that's more than is seen on camera, it will be clipped.
+  return x,y,w,3*w

@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 import DeepFried2 as df
 from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 from df_extras import Flatten, Biternion
@@ -44,5 +46,5 @@ def preproc(im):
   return im.astype(df.floatX)/255
 
 def cutout(x,y,w,h):
-  # Keep the full rectangle.
-  return x,y,w,h
+  # Take only the square upper-body section.
+  return x,y,w,w
