@@ -34,7 +34,6 @@ void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh, float bgcoeff)
     }
 
     float md = mediandepth(d, bgcoeff);
-    std::cout << "Median depth: " << md << std::endl;
 
     for(size_t y = 0 ; y < d.rows ; ++y) {
         const float *dpix = d.ptr<float>(y);
