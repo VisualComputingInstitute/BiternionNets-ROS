@@ -6,15 +6,15 @@ import cv2
 import sys, os
 import argparse
 import copy
+from importlib import import_module
 
 import DeepFried2 as df
 from lbtoolbox.util import flipany, printnow
 from lbtoolbox.thutil import count_params
-from lbtoolbox.augmentation import AugmentationPipeline, Cropper
 
 from training_utils import dotrain, dostats, dopred
 from df_extras import BiternionCriterion
-from common import mknet, deg2bit, bit2deg, ensemble_degrees, ensemble_biternions
+from common import deg2bit, bit2deg, ensemble_degrees, ensemble_biternions
 
 pjoin = os.path.join
 
@@ -186,6 +186,10 @@ if __name__ == '__main__':
     type=argparse.FileType('w'), default="biternion-net.npz",
     help="File to save the learned model as."
   )
+  parser.add_argument("-n", "--net",
+    type=str, default="head_50_50",
+    help="Name of the python file containing the net definition (without .py, in the `net` subfolder.)"
+  )
 
   args = parser.parse_args()
   print(args.criterion + " criterion will be used")
@@ -205,8 +209,9 @@ if __name__ == '__main__':
   yte_f = yte_f.astype(df.floatX)
   printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000)
 
-  aug = AugmentationPipeline(Xtr, ytr, Cropper((46,46)))
-  net = mknet()
+  netlib = import_module("nets." + args.net)
+  aug = netlib.mkaug(Xtr, ytr)
+  net = netlib.mknet()
   #printnow('Network has {:.3f}M params in {} layers', count_params(net)/1000000, len(net.modules))
 
   costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
