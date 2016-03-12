@@ -111,7 +111,7 @@ void cb(const TrackedPersons2d::ConstPtr& t2d, const sensor_msgs::ImageConstPtr&
 
         dump_32FC1(fname + "_d.csv", dimg);
 
-        std::cout << "\rDumping: " << rgb->header.seq << std::flush;
+        std::cout << "\rDump #" << g_counter << ": track " << p2d.track_id << "@seq" << rgb->header.seq << std::flush;
         g_counter++;
     }
 }
