@@ -168,6 +168,14 @@ def prepare_data(datadir):
   return Xtr['8'], ytr, Xte['8'], yte, Xte_f['8'], yte_f, nte['8'], nte_f['8']
 
 if __name__ == '__main__':
+  try:
+    # Add the "models" directory to the path!
+    from rospkg import RosPack
+    modeldir = pjoin(RosPack().get_path('biternion'), 'models')
+    sys.path.append(pjoin(RosPack().get_path('biternion'), 'scripts'))
+  except ImportError:
+    modeldir = os.path.dirname(os.path.abspath(os.path.join(__file__, '../models')))
+
   parser = argparse.ArgumentParser(description='BiternionNet training')
   parser.add_argument("-c", "--criterion",
     type=str, default='cosine',
@@ -185,6 +193,10 @@ if __name__ == '__main__':
     type=argparse.FileType('w'), default="biternion-net.npz",
     help="File to save the learned model as."
   )
+  parser.add_argument("-m", "--modeldir",
+    type=str, default=modeldir,
+    help="Search-path for network description files."
+  )
   parser.add_argument("-n", "--net",
     type=str, default="head_50_50",
     help="Name of the python file containing the net definition (without .py, in the `net` subfolder.)"
@@ -200,6 +212,9 @@ if __name__ == '__main__':
   else:
     print("ERROR: You specified wrong criterion. Sorry =(")
     sys.exit(1)
+
+  for d in ':'.split(args.modeldir):
+    sys.path.append(d)
 
   printnow("Loading data from {}", args.datadir)
   Xtr, ytr, Xte, yte, Xte_f, yte_f, nte, nte_f = prepare_data(args.datadir)

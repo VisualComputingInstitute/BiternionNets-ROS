@@ -67,7 +67,7 @@ class Predictor(object):
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
 
         # Create and load the network.
-        netlib = import_module("nets." + modelname)
+        netlib = import_module(modelname)
         self.net = netlib.mknet()
         self.net.__setstate__(np.load(weightsname))
         self.net.evaluate()
@@ -143,6 +143,7 @@ if __name__ == "__main__":
 
     # Add the "models" directory to the path!
     sys.path.append(pjoin(RosPack().get_path('biternion'), 'scripts'))
+    sys.path.append(pjoin(RosPack().get_path('biternion'), 'models'))
 
     p = Predictor()
     rospy.spin()
