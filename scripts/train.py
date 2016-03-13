@@ -84,7 +84,7 @@ def skip_one_classers(X,y,n):
   X['4x'] = np.array([X['4x'][i] for i,name in enumerate(n['4x']) if name in n['4p']])
   y['4x'] = np.array([y['4x'][i] for i,name in enumerate(n['4x']) if name in n['4p']])
   n['4x'] = [name for name in n['4x'] if name in n['4p']]
-  
+
   return X, y, n
 
 def prepare_data(datadir):
@@ -140,7 +140,7 @@ def prepare_data(datadir):
       (classnums4p['backleft'], classnums4p['backright']),
       (classnums4p['backright'], classnums4p['backleft']),
   ])
-   
+
   Xte_f['4x'], yte_f['4x'], nte_f['4x'] = flipall(Xte['4x'], yte['4x'], nte['4x'], flips=[
       (classnums4x['front'], classnums4x['front']),
       (classnums4x['back'], classnums4x['back']),
@@ -155,7 +155,7 @@ def prepare_data(datadir):
       (classnums4p['backright'], classnums4p['backleft'])],
       append=False
     )
-  
+
   # Merge 4x and 4p into 8
   Xtr['8'], ytr['8'], ntr['8'] = merge4to8(Xtr, ytr, ntr)
   Xte['8'], yte['8'], nte['8'] = merge4to8(Xte, yte, nte)
