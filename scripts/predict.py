@@ -47,7 +47,7 @@ def get_rects(msg):
     if isinstance(msg, TrackedPersons2d):
         return [(p2d.x, p2d.y, p2d.w, p2d.h) for p2d in msg.boxes]
     elif isinstance(msg, UpperBodyDetector):
-        return list(zip(ubd.pos_x, ubd.pos_y, ubd.width, ubd.height))
+        return list(zip(msg.pos_x, msg.pos_y, msg.width, msg.height))
     else:
         raise TypeError("Unknown source type: {}".format(type(msg)))
 
