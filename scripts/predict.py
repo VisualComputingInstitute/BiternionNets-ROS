@@ -28,13 +28,12 @@ except ImportError:
     from spencer_tracking_msgs.msg import TrackedPersons2d
 
 
-def subtractbg(rgb, dept, threshold, bgcoeff):
+def subtractbg(rgb, depth, threshold, bgcoeff):
   #rgb.flags.writeable = True #super cool hack
   rgb = rgb.copy()
-  d = dept[~np.isnan(dept)]
-  d = np.percentile(d, bgcoeff*100)
-  rgb[np.isnan(dept)] = [0,0,0]
-  rgb[d+threshold < dept] = [0,0,0]
+  med = np.nanpercentile(depth, bgcoeff*100)
+  rgb[np.isnan(depth)] = [0,0,0]
+  rgb[med+threshold < dept] = [0,0,0]
   return rgb
 
 def cutout(img, x, y, w, h):
