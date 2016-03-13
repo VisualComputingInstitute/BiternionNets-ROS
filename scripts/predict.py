@@ -96,9 +96,9 @@ class Predictor(object):
 
     def cb(self, src, rgb, d):
         header = rgb.header
-        b = CvBridge()
-        rgb = b.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
-        d = b.imgmsg_to_cv2(d)
+        bridge = CvBridge()
+        rgb = bridge.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
+        d = bridge.imgmsg_to_cv2(d)
         imgs = []
         for detrect in get_rects(src):
             detrect = self.factrect(*detrect)
@@ -134,7 +134,7 @@ class Predictor(object):
                     cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
                     cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
                     cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
-                vismsg = b.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
+                vismsg = bridge.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
                 vismsg.header = header  # TODO: Seems not to work!
                 self.pub_vis.publish(vismsg)
 
