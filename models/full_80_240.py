@@ -49,7 +49,7 @@ def preproc(im):
   im = np.rollaxis(im, 2, 0)
   return im.astype(df.floatX)/255
 
-def cutout(x,y,w,h):
+def getrect(x,y,w,h):
   # Here we use the full box.
   # We know from the detector that full-height = 3x width.
   # If that's more than is seen on camera, it will be clipped.

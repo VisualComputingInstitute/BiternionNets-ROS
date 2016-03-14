@@ -73,7 +73,7 @@ class Predictor(object):
 
         self.aug = netlib.mkaug(None, None)
         self.preproc = netlib.preproc
-        self.factrect = netlib.cutout
+        self.getrect = netlib.getrect
 
         # Do a fake forward-pass for precompilation.
         im = cutout(np.zeros((480,640,3), np.uint8), 0, 0, 150, 450)
@@ -101,7 +101,7 @@ class Predictor(object):
         d = bridge.imgmsg_to_cv2(d)
         imgs = []
         for detrect in get_rects(src):
-            detrect = self.factrect(*detrect)
+            detrect = self.getrect(*detrect)
             det_rgb = cutout(rgb, *detrect)
             det_d = cutout(d, *detrect)
 
@@ -127,7 +127,7 @@ class Predictor(object):
             if 0 < self.pub_vis.get_num_connections():
                 rgb_vis = rgb[:,:,::-1].copy()
                 for detrect, alpha in zip(get_rects(src), preds):
-                    l, t, w, h = self.factrect(*detrect)
+                    l, t, w, h = self.getrect(*detrect)
                     px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
                     py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
                     cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
