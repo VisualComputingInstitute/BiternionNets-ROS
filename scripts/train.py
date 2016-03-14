@@ -13,24 +13,19 @@ from lbtoolbox.util import flipany, printnow
 
 from training_utils import dotrain, dostats, dopred
 from df_extras import BiternionCriterion
-from common import deg2bit, bit2deg, ensemble_degrees, ensemble_biternions
+from common import deg2bit, bit2deg, ensemble_degrees, ensemble_biternions, cutout
 
 pjoin = os.path.join
 
-def myimread(fname, zeroone=True, resize=None):
+def myimread(fname, netlib):
   im = cv2.imread(fname, flags=cv2.IMREAD_COLOR)
   if im is None:
     raise ValueError("Couldn't load image " + fname)
 
-  if resize is not None:
-    im = cv2.resize(im, resize, interpolation=cv2.INTER_LANCZOS4)
+  im = cutout(im, *netlib.getrect(0, 0, im.shape[1], im.shape[0]))
+  return netlib.preproc(im)
 
-  # In OpenCV, color dimension is last, but theano likes it to be first.
-  # (That's map of triplets vs three maps philosophy.)
-  im = np.rollaxis(im, 2, 0) #TODO add comment or vars instead of bare numbers
-  return im.astype(np.float32)/255 if zeroone else im
-
-def load(path, testname, skip, ydict):
+def load(path, testname, skip, ydict, netlib):
   Xtr, Xte = [], []
   ytr, yte = [], []
   ntr, nte = [], []
@@ -38,11 +33,11 @@ def load(path, testname, skip, ydict):
   for lbl in os.listdir(path):
     for f in os.listdir(pjoin(path, lbl)):
       if f.startswith(testname):
-        Xte.append(myimread(pjoin(path, lbl, f)))
+        Xte.append(myimread(pjoin(path, lbl, f), netlib))
         yte.append(ydict[lbl])
         nte.append(f)
       elif not any(f.startswith(s) for s in skip):
-        Xtr.append(myimread(pjoin(path, lbl, f)))
+        Xtr.append(myimread(pjoin(path, lbl, f), netlib))
         ytr.append(ydict[lbl])
         ntr.append(f)
 
@@ -87,7 +82,7 @@ def skip_one_classers(X,y,n):
 
   return X, y, n
 
-def prepare_data(datadir):
+def prepare_data(datadir, netlib):
   classes4x = ['front','right','back','left']
   classnums4x = {c: i for i, c in enumerate(classes4x)}
   classes4p = ['frontright','backright','backleft','frontleft']
@@ -113,7 +108,7 @@ def prepare_data(datadir):
 
   for name, ydict in {'4x': classnums4x, '4p': classnums4p}.items():
     Xtr[name], Xte[name], ytr[name], yte[name], ntr[name], nte[name] = load(pjoin(datadir, name),
-      testname='lucas', skip=['.', 'dog', 'dog2', 'doggy'], ydict=ydict
+      testname='lucas', skip=['.', 'dog', 'dog2', 'doggy'], ydict=ydict, netlib=netlib
     )
 
   Xtr,ytr,ntr = skip_one_classers(Xtr,ytr,ntr)
@@ -213,17 +208,17 @@ if __name__ == '__main__':
     print("ERROR: You specified wrong criterion. Sorry =(")
     sys.exit(1)
 
-  for d in ':'.split(args.modeldir):
+  for d in args.modeldir.split(':'):
     sys.path.append(d)
+  netlib = import_module(args.net)
 
   printnow("Loading data from {}", args.datadir)
-  Xtr, ytr, Xte, yte, Xte_f, yte_f, nte, nte_f = prepare_data(args.datadir)
+  Xtr, ytr, Xte, yte, Xte_f, yte_f, nte, nte_f = prepare_data(args.datadir, netlib)
   ytr = ytr.astype(df.floatX)
   yte = yte.astype(df.floatX)
   yte_f = yte_f.astype(df.floatX)
   printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000.0)
 
-  netlib = import_module("nets." + args.net)
   aug = netlib.mkaug(Xtr, ytr)
   net = netlib.mknet()
   printnow('Network has {:.3f}M params in {} layers', df.utils.count_params(net)/1000.0/1000.0, len(net.modules))

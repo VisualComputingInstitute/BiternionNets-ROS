@@ -18,7 +18,7 @@ from visualization_msgs.msg import Marker
 
 import DeepFried2 as df
 
-from common import bit2deg, ensemble_biternions
+from common import bit2deg, ensemble_biternions, subtractbg, cutout
 
 # Distinguish between STRANDS and SPENCER.
 try:
@@ -27,21 +27,6 @@ except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
     from spencer_tracking_msgs.msg import TrackedPersons2d
 
-
-def subtractbg(rgb, depth, threshold, bgcoeff):
-  #rgb.flags.writeable = True #super cool hack
-  rgb = rgb.copy()
-  med = np.nanpercentile(depth, bgcoeff*100)
-  rgb[np.isnan(depth)] = [0,0,0]
-  rgb[med+threshold < dept] = [0,0,0]
-  return rgb
-
-def cutout(img, x, y, w, h):
-    # Need to be careful for negative indices in conjunction with
-    # numpy's (and thus OpenCV's) wrap-around.
-    y2, x2 = y+h, x+w
-    y1, x1 = max(y, 0), max(x, 0)
-    return img[y1:y2, x1:x2]
 
 def get_rects(msg):
     if isinstance(msg, TrackedPersons2d):
