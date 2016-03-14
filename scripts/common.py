@@ -10,6 +10,12 @@ def bit2deg(angles_bit):
   return (np.rad2deg(np.arctan2(angles_bit[:,1], angles_bit[:,0])) + 360) % 360
 
 
+def flipbiternions(bits):
+  bits = bits.copy()
+  bits[:,1] *= -1
+  return bits
+
+
 def ensemble_degrees(angles):
   """
   Averages the `angles` (in degrees) along the first dimension, i.e. an input of
