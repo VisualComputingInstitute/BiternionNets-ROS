@@ -36,9 +36,17 @@ def ensemble_biternions(biternions):
 def subtractbg(rgb, depth, threshold, bgcoeff):
     #rgb.flags.writeable = True #super cool hack
     rgb = rgb.copy()
-    med = np.nanpercentile(depth, bgcoeff*100)
-    rgb[np.isnan(depth)] = [0,0,0]
-    rgb[med+threshold < dept] = [0,0,0]
+
+    nanmask = np.isnan(depth)
+
+    try:
+        med = np.nanpercentile(depth, bgcoeff*100)
+    except AttributeError:
+        # `nanpercentile` only exists starting with numpy 1.9, but Ubuntu 14.04 has 1.8
+        med = np.percentile(depth[~nanmask], bgcoeff*100)
+
+    rgb[nanmask] = [0,0,0]
+    rgb[med+threshold < depth] = [0,0,0]
     return rgb
 
 
