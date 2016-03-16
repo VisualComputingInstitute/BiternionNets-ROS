@@ -189,15 +189,15 @@ if __name__ == '__main__':
     sys.path.append(d)
   netlib = import_module(args.net)
 
-  printnow("Loading data from {}", args.datadir)
+  printnow("Loading data from {}\n", args.datadir)
   Xtr, ytr, Xte, yte, nte = prepare_data(args.datadir, netlib)
   ytr = ytr.astype(df.floatX)
   yte = yte.astype(df.floatX)
-  printnow("Got {:.2f}k training images after flipping", len(Xtr)/1000.0)
+  printnow("Got {:.2f}k training images after flipping\n", len(Xtr)/1000.0)
 
   aug = netlib.mkaug(Xtr, ytr)
   net = netlib.mknet()
-  printnow('Network has {:.3f}M params in {} layers', df.utils.count_params(net)/1000.0/1000.0, len(net.modules))
+  printnow('Network has {:.3f}M params in {} layers\n', df.utils.count_params(net)/1000.0/1000.0, len(net.modules))
 
   costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
   print("Costs: {}".format(' ; '.join(map(str, costs))))
@@ -205,22 +205,22 @@ if __name__ == '__main__':
   dostats(net, aug, Xtr, batchsize=1000)
 
   # Save the network.
-  printnow("Saving the learned network to {}", args.output)
+  printnow("Saving the learned network to {}\n", args.output)
   np.save(args.output, net.__getstate__())
 
   # Prediction, TODO: Move to ROS node.
   s = np.argsort(nte)
   Xte,yte = Xte[s],yte[s]
 
-  printnow("(TEMP) Doing predictions.", args.output)
+  printnow("(TEMP) Doing predictions.\n", args.output)
   y_pred = dopred_bit(net, aug, Xte)
 
   # Ensemble the flips!
   #res = maad_from_deg(bit2deg(yte), bit2deg(yte))
   res = maad_from_deg(bit2deg(y_pred), bit2deg(yte))
-  print("MAE for test images              = ", res.mean())
+  printnow("MAE for test images              = {:.2f}\n", res.mean())
 
   #y_pred2 = ensemble_biternions([yte[::2], flipbiternions(yte[1::2])])
   y_pred2 = ensemble_biternions([y_pred[::2], flipbiternions(y_pred[1::2])])
   res = maad_from_deg(bit2deg(y_pred2), bit2deg(yte[::2]))
-  print("MAE for flipped augmented images = ", res.mean())
+  printnow("MAE for flipped augmented images = {:.2f}\n", res.mean())
