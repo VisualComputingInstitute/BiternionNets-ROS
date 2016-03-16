@@ -2,7 +2,7 @@ import numpy as np
 import DeepFried2 as df
 from lbtoolbox.util import batched
 
-def dotrain(model, crit, aug, Xtr, ytr, nepochs=3, batchsize=100, title=None):
+def dotrain(model, crit, aug, Xtr, ytr, nepochs=3, batchsize=128, title=None):
     opt = df.AdaDelta(rho=.95, eps=1e-7, lr=1)
     model.training()
     costs = []
@@ -22,7 +22,7 @@ def dotrain(model, crit, aug, Xtr, ytr, nepochs=3, batchsize=100, title=None):
     return costs
 
 
-def dostats(model, aug, Xtr, batchsize=100):
+def dostats(model, aug, Xtr, batchsize=128):
     model.training()
 
     for Xb in batched(batchsize, Xtr):
@@ -32,7 +32,7 @@ def dostats(model, aug, Xtr, batchsize=100):
             for Xb_aug in aug.augbatch_pred(Xb):
                 model.accumulate_statistics(Xb_aug)
 
-def dopred(model, aug, X, ensembling, output2preds, batchsize=100):
+def dopred(model, aug, X, ensembling, output2preds, batchsize=128):
     model.evaluate()
     y_preds = []
     for Xb in batched(batchsize, X):

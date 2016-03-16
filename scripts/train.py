@@ -199,10 +199,12 @@ if __name__ == '__main__':
   net = netlib.mknet()
   printnow('Network has {:.3f}M params in {} layers\n', df.utils.count_params(net)/1000.0/1000.0, len(net.modules))
 
+  print(net[:21].forward(aug.augbatch_train(Xtr[:100])[0]).shape)
+
   costs = dotrain(net, crit, aug, Xtr, ytr, nepochs=args.epochs)
   print("Costs: {}".format(' ; '.join(map(str, costs))))
 
-  dostats(net, aug, Xtr, batchsize=1000)
+  dostats(net, aug, Xtr, batchsize=64)
 
   # Save the network.
   printnow("Saving the learned network to {}\n", args.output)
@@ -213,7 +215,7 @@ if __name__ == '__main__':
   Xte,yte = Xte[s],yte[s]
 
   printnow("(TEMP) Doing predictions.\n", args.output)
-  y_pred = dopred_bit(net, aug, Xte)
+  y_pred = dopred_bit(net, aug, Xte, batchsize=64)
 
   # Ensemble the flips!
   #res = maad_from_deg(bit2deg(yte), bit2deg(yte))
