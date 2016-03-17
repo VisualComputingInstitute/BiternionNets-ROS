@@ -39,6 +39,11 @@ def subtractbg(rgb, depth, threshold, bgcoeff):
 
     nanmask = np.isnan(depth)
 
+    # Sometimes we get broken depth of all-nans.
+    # We don't want to get an exception from percentile functions then.
+    if np.all(nanmask):
+        return rgb
+
     try:
         med = np.nanpercentile(depth, bgcoeff*100)
     except AttributeError:
