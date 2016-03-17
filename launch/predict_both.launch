@@ -1,0 +1,31 @@
+<launch>
+    <arg name="cam" default="rear" />
+    <arg name="tra" default="/spencer/perception_internal/people_tracking/rgbd_$(arg cam)_top/tracked_persons_2d" />
+    <arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_$(arg cam)_top/upper_body_detector/detections" />
+    <arg name="src" default="tra" />
+    <arg name="rgb" default="/spencer/sensors/rgbd_$(arg cam)_top/rgb/image_raw" />
+    <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
+    <arg name="topic" default="/spencer/perception/head_orientations" />
+
+    <node pkg="biternion" type="predict.py" name="biternion_head" output="screen" respawn="false">
+        <param name="model" value="head_80_50" />
+        <param name="weights" value="$(find biternion)/models/head_80_50.npz" />
+        <param name="tra" value="$(arg tra)" />
+        <param name="ubd" value="$(arg ubd)" />
+        <param name="src" value="$(arg src)" />
+        <param name="rgb" value="$(arg rgb)" />
+        <param name="d" value="$(arg d)" />
+        <param name="topic" value="$(arg topic)/head" />
+    </node>
+
+    <node pkg="biternion" type="predict.py" name="biternion_full" output="screen" respawn="false">
+        <param name="model" value="full_80_240" />
+        <param name="weights" value="$(find biternion)/models/full_80_240.npz" />
+        <param name="tra" value="$(arg tra)" />
+        <param name="ubd" value="$(arg ubd)" />
+        <param name="src" value="$(arg src)" />
+        <param name="rgb" value="$(arg rgb)" />
+        <param name="d" value="$(arg d)" />
+        <param name="topic" value="$(arg topic)/full" />
+    </node>
+</launch>
