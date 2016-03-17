@@ -12,7 +12,7 @@ import rospy
 from rospkg import RosPack
 from cv_bridge import CvBridge
 import message_filters
-from sensor_msgs.msg import Image as ROSImage
+from sensor_msgs.msg import Image as ROSImage, CameraInfo
 from biternion.msg import HeadOrientations
 from visualization_msgs.msg import Marker
 
@@ -74,12 +74,15 @@ class Predictor(object):
         else:
             raise ValueError("Unknown source type: " + src)
 
-        subs.append(message_filters.Subscriber(rospy.get_param("~rgb", "/head_xtion/rgb/image_rect_color"), ROSImage))
+        rgb = rospy.get_param("~rgb", "/head_xtion/rgb/image_rect_color")
+        subs.append(message_filters.Subscriber(rgb, ROSImage))
         subs.append(message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage))
+        subs.append(message_filters.Subscriber('/'.join(rgb.split('/')[:-1] + ['camera_info']), CameraInfo))
+
         ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.5)
         ts.registerCallback(self.cb)
 
-    def cb(self, src, rgb, d):
+    def cb(self, src, rgb, d, caminfo):
         header = rgb.header
         bridge = CvBridge()
         rgb = bridge.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
