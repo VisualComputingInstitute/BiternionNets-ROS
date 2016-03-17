@@ -9,10 +9,12 @@ import numpy as np
 import cv2
 
 import rospy
+from tf.transformations import quaternion_about_axis
 from rospkg import RosPack
 from cv_bridge import CvBridge
 import message_filters
 from sensor_msgs.msg import Image as ROSImage, CameraInfo
+from geometry_msgs.msg import PoseArray, Pose
 from biternion.msg import HeadOrientations
 from visualization_msgs.msg import Marker
 
@@ -28,11 +30,11 @@ except ImportError:
     from spencer_tracking_msgs.msg import TrackedPersons2d
 
 
-def get_rects(msg):
+def get_rects(msg, with_depth=False):
     if isinstance(msg, TrackedPersons2d):
-        return [(p2d.x, p2d.y, p2d.w, p2d.h) for p2d in msg.boxes]
+        return [(p2d.x, p2d.y, p2d.w, p2d.h) + ((p2d.depth,) if with_depth else tuple()) for p2d in msg.boxes]
     elif isinstance(msg, UpperBodyDetector):
-        return list(zip(msg.pos_x, msg.pos_y, msg.width, msg.height))
+        return list(zip(*([msg.pos_x, msg.pos_y, msg.width, msg.height] + ([msg.median_depth] if with_depth else []))))
     else:
         raise TypeError("Unknown source type: {}".format(type(msg)))
 
@@ -49,6 +51,7 @@ class Predictor(object):
         topic = rospy.get_param("~topic", "/biternion")
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
+        self.pub_pa = rospy.Publisher(topic + "/pose", PoseArray, queue_size=3)
 
         # Create and load the network.
         netlib = import_module(modelname)
@@ -125,6 +128,32 @@ class Predictor(object):
                 vismsg = bridge.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
                 vismsg.header = header  # TODO: Seems not to work!
                 self.pub_vis.publish(vismsg)
+
+            if 0 < self.pub_pa.get_num_connections():
+                fx, cx = caminfo.K[0], caminfo.K[2]
+                fy, cy = caminfo.K[4], caminfo.K[5]
+
+                poseArray = PoseArray()
+                poseArray.header.stamp = header.stamp
+                poseArray.header.frame_id = header.frame_id
+
+                for (dx, dy, dw, dh, dd), alpha in zip(get_rects(src, with_depth=True), preds):
+                    dx, dy, dw, dh = self.getrect(dx, dy, dw, dh)
+
+                    # PoseArray message for boundingbox centres
+                    pose = Pose()
+                    pose.position.x = dd*((dx+dw/2.0-cx)/fx)
+                    pose.position.y = dd*((dy+dh/2.0-cy)/fy)
+                    pose.position.z = dd
+                    # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
+                    q = quaternion_about_axis(np.deg2rad(alpha - 90), [0, -1, 0])
+                    pose.orientation.w = q[3] # No rotation atm.
+                    pose.orientation.x = q[0]
+                    pose.orientation.y = q[1]
+                    pose.orientation.z = q[2]
+                    poseArray.poses.append(pose)
+
+                self.pub_pa.publish(poseArray)
 
 
 if __name__ == "__main__":
