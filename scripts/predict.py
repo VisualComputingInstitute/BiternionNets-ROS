@@ -117,8 +117,7 @@ class Predictor(object):
         #       single batch and doing only one forward pass. Should be easy.
         if len(detrects):
             bits = [self.net.forward(batch) for batch in self.aug.augbatch_pred(np.array(imgs), fast=True)]
-            preds = bit2deg(ensemble_biternions(bits))
-            print(preds)
+            preds = bit2deg(ensemble_biternions(bits)) - 90  # Subtract 90 to correct for "my weird" origin.
         else:
             preds = []
 
@@ -134,8 +133,8 @@ class Predictor(object):
             rgb_vis = rgb[:,:,::-1].copy()
             for detrect, alpha in zip(detrects, preds):
                 l, t, w, h = self.getrect(*detrect)
-                px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
-                py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
+                px =  int(round(np.cos(np.deg2rad(alpha))*w/2))
+                py = -int(round(np.sin(np.deg2rad(alpha))*h/2))
                 cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
                 cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
                 cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
@@ -161,7 +160,7 @@ class Predictor(object):
                 pose.position.y = dd*((dy+dh/2.0-cy)/fy)
                 pose.position.z = dd
                 # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
-                q = quaternion_about_axis(np.deg2rad(alpha - 90), [0, -1, 0])
+                q = quaternion_about_axis(np.deg2rad(alpha), [0, -1, 0])
                 pose.orientation.w = q[3]
                 pose.orientation.x = q[0]
                 pose.orientation.y = q[1]
