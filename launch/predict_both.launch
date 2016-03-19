@@ -7,6 +7,9 @@
     <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
     <arg name="topic" default="/spencer/perception/orientations" />
 
+    <!-- Optional for visualization purposes -->
+    <arg name="tra3d" default="/spencer/perception_internal/people_tracking/rgbd_$(arg cam)_top/tracked_persons" />
+
     <node pkg="biternion" type="predict.py" name="biternion_head" output="screen" respawn="false">
         <param name="model" value="head_80_50" />
         <param name="weights" value="$(find biternion)/models/head_80_50.npz" />
@@ -16,6 +19,8 @@
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />
         <param name="topic" value="$(arg topic)/head" />
+        <!-- Use the head orientation for the model for now, it's a little better. -->
+        <param name="tra3d" value="$(arg tra3d)" />
     </node>
 
     <node pkg="biternion" type="predict.py" name="biternion_body" output="screen" respawn="false">
@@ -27,5 +32,6 @@
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />
         <param name="topic" value="$(arg topic)/body" />
+        <param name="tra3d" value="" />
     </node>
 </launch>

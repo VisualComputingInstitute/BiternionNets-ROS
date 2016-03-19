@@ -9,12 +9,13 @@ import numpy as np
 import cv2
 
 import rospy
+from tf import TransformListener, Exception as TFException
 from tf.transformations import quaternion_about_axis
 from rospkg import RosPack
 from cv_bridge import CvBridge
 import message_filters
 from sensor_msgs.msg import Image as ROSImage, CameraInfo
-from geometry_msgs.msg import PoseArray, Pose
+from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion, QuaternionStamped
 from biternion.msg import HeadOrientations
 from visualization_msgs.msg import Marker
 
@@ -27,7 +28,7 @@ try:
     from upper_body_detector.msg import UpperBodyDetector
 except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
-    from spencer_tracking_msgs.msg import TrackedPersons2d
+    from spencer_tracking_msgs.msg import TrackedPersons2d, TrackedPersons
 
 
 def get_rects(msg, with_depth=False):
@@ -52,6 +53,7 @@ class Predictor(object):
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
         self.pub_pa = rospy.Publisher(topic + "/pose", PoseArray, queue_size=3)
+        self.pub_tracks = rospy.Publisher(topic + "/tracks", TrackedPersons, queue_size=3)
 
         # Create and load the network.
         netlib = import_module(modelname)
@@ -82,10 +84,15 @@ class Predictor(object):
         subs.append(message_filters.Subscriber(rospy.get_param("~d", "/head_xtion/depth/image_rect_meters"), ROSImage))
         subs.append(message_filters.Subscriber('/'.join(rgb.split('/')[:-1] + ['camera_info']), CameraInfo))
 
+        tra3d = rospy.get_param("~tra3d", "")
+        if src == "tra" and tra3d:
+            subs.append(message_filters.Subscriber(tra3d, TrackedPersons))
+            self.listener = TransformListener()
+
         ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.5)
         ts.registerCallback(self.cb)
 
-    def cb(self, src, rgb, d, caminfo):
+    def cb(self, src, rgb, d, caminfo, *more):
         detrects = get_rects(src)
 
         # Early-exit to minimize CPU usage if possible.
@@ -93,7 +100,7 @@ class Predictor(object):
         #    return
 
         # If nobody's listening, why should we be computing?
-        if 0 == self.pub.get_num_connections() + self.pub_vis.get_num_connections() + self.pub_pa.get_num_connections():
+        if 0 == sum(p.get_num_connections() for p in (self.pub, self.pub_vis, self.pub_pa, self.pub_tracks)):
             return
 
         header = rgb.header
@@ -118,6 +125,7 @@ class Predictor(object):
         if len(detrects):
             bits = [self.net.forward(batch) for batch in self.aug.augbatch_pred(np.array(imgs), fast=True)]
             preds = bit2deg(ensemble_biternions(bits)) - 90  # Subtract 90 to correct for "my weird" origin.
+            # print(preds)
         else:
             preds = []
 
@@ -147,27 +155,37 @@ class Predictor(object):
             fx, cx = caminfo.K[0], caminfo.K[2]
             fy, cy = caminfo.K[4], caminfo.K[5]
 
-            poseArray = PoseArray()
-            poseArray.header.stamp = header.stamp
-            poseArray.header.frame_id = header.frame_id
+            poseArray = PoseArray(header=header)
 
             for (dx, dy, dw, dh, dd), alpha in zip(get_rects(src, with_depth=True), preds):
                 dx, dy, dw, dh = self.getrect(dx, dy, dw, dh)
 
                 # PoseArray message for boundingbox centres
-                pose = Pose()
-                pose.position.x = dd*((dx+dw/2.0-cx)/fx)
-                pose.position.y = dd*((dy+dh/2.0-cy)/fy)
-                pose.position.z = dd
-                # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
-                q = quaternion_about_axis(np.deg2rad(alpha), [0, -1, 0])
-                pose.orientation.w = q[3]
-                pose.orientation.x = q[0]
-                pose.orientation.y = q[1]
-                pose.orientation.z = q[2]
-                poseArray.poses.append(pose)
+                poseArray.poses.append(Pose(
+                    position=Point(
+                        x=dd*((dx+dw/2.0-cx)/fx),
+                        y=dd*((dy+dh/2.0-cy)/fy),
+                        z=dd
+                    ),
+                    # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
+                    orientation=Quaternion(*quaternion_about_axis(np.deg2rad(alpha), [0, -1, 0]))
+                ))
 
             self.pub_pa.publish(poseArray)
+
+        if len(more) == 1 and 0 < self.pub_tracks.get_num_connections():
+            t3d = more[0]
+            try:
+                self.listener.waitForTransform(header.frame_id, t3d.header.frame_id, rospy.Time(), rospy.Duration(1))
+                for track, alpha in zip(t3d.tracks, preds):
+                    track.pose.pose.orientation = self.listener.transformQuaternion(t3d.header.frame_id, QuaternionStamped(
+                        header=header,
+                        # TODO: Same as above!
+                        quaternion=Quaternion(*quaternion_about_axis(np.deg2rad(alpha), [0, -1, 0]))
+                    )).quaternion
+                self.pub_tracks.publish(t3d)
+            except TFException:
+                pass
 
 
 if __name__ == "__main__":
