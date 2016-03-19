@@ -86,12 +86,22 @@ class Predictor(object):
         ts.registerCallback(self.cb)
 
     def cb(self, src, rgb, d, caminfo):
+        detrects = get_rects(src)
+
+        # Early-exit to minimize CPU usage if possible.
+        #if len(detrects) == 0:
+        #    return
+
+        # If nobody's listening, why should we be computing?
+        if 0 == self.pub.get_num_connections() + self.pub_vis.get_num_connections() + self.pub_pa.get_num_connections():
+            return
+
         header = rgb.header
         bridge = CvBridge()
         rgb = bridge.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
         d = bridge.imgmsg_to_cv2(d)
         imgs = []
-        for detrect in get_rects(src):
+        for detrect in detrects:
             detrect = self.getrect(*detrect)
             det_rgb = cutout(rgb, *detrect)
             det_d = cutout(d, *detrect)
@@ -103,57 +113,62 @@ class Predictor(object):
             sys.stderr.write("\r{}".format(self.counter)) ; sys.stderr.flush()
             self.counter += 1
 
-        if 0 < len(imgs):
+        # TODO: We could further optimize by putting all augmentations in a
+        #       single batch and doing only one forward pass. Should be easy.
+        if len(detrects):
             bits = [self.net.forward(batch) for batch in self.aug.augbatch_pred(np.array(imgs), fast=True)]
             preds = bit2deg(ensemble_biternions(bits))
             print(preds)
+        else:
+            preds = []
 
+        if 0 < self.pub.get_num_connections():
             self.pub.publish(HeadOrientations(
                 header=header,
                 angles=list(preds),
                 confidences=[0.83] * len(imgs)
             ))
 
-            # Visualization
-            if 0 < self.pub_vis.get_num_connections():
-                rgb_vis = rgb[:,:,::-1].copy()
-                for detrect, alpha in zip(get_rects(src), preds):
-                    l, t, w, h = self.getrect(*detrect)
-                    px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
-                    py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
-                    cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
-                    cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
-                    cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
-                    cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
-                vismsg = bridge.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
-                vismsg.header = header  # TODO: Seems not to work!
-                self.pub_vis.publish(vismsg)
+        # Visualization
+        if 0 < self.pub_vis.get_num_connections():
+            rgb_vis = rgb[:,:,::-1].copy()
+            for detrect, alpha in zip(detrects, preds):
+                l, t, w, h = self.getrect(*detrect)
+                px =  int(round(np.cos(np.deg2rad(alpha-90))*w/2))
+                py = -int(round(np.sin(np.deg2rad(alpha-90))*h/2))
+                cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
+                cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
+                cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
+                # cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
+            vismsg = bridge.cv2_to_imgmsg(rgb_vis, encoding='rgb8')
+            vismsg.header = header  # TODO: Seems not to work!
+            self.pub_vis.publish(vismsg)
 
-            if 0 < self.pub_pa.get_num_connections():
-                fx, cx = caminfo.K[0], caminfo.K[2]
-                fy, cy = caminfo.K[4], caminfo.K[5]
+        if 0 < self.pub_pa.get_num_connections():
+            fx, cx = caminfo.K[0], caminfo.K[2]
+            fy, cy = caminfo.K[4], caminfo.K[5]
 
-                poseArray = PoseArray()
-                poseArray.header.stamp = header.stamp
-                poseArray.header.frame_id = header.frame_id
+            poseArray = PoseArray()
+            poseArray.header.stamp = header.stamp
+            poseArray.header.frame_id = header.frame_id
 
-                for (dx, dy, dw, dh, dd), alpha in zip(get_rects(src, with_depth=True), preds):
-                    dx, dy, dw, dh = self.getrect(dx, dy, dw, dh)
+            for (dx, dy, dw, dh, dd), alpha in zip(get_rects(src, with_depth=True), preds):
+                dx, dy, dw, dh = self.getrect(dx, dy, dw, dh)
 
-                    # PoseArray message for boundingbox centres
-                    pose = Pose()
-                    pose.position.x = dd*((dx+dw/2.0-cx)/fx)
-                    pose.position.y = dd*((dy+dh/2.0-cy)/fy)
-                    pose.position.z = dd
-                    # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
-                    q = quaternion_about_axis(np.deg2rad(alpha - 90), [0, -1, 0])
-                    pose.orientation.w = q[3] # No rotation atm.
-                    pose.orientation.x = q[0]
-                    pose.orientation.y = q[1]
-                    pose.orientation.z = q[2]
-                    poseArray.poses.append(pose)
+                # PoseArray message for boundingbox centres
+                pose = Pose()
+                pose.position.x = dd*((dx+dw/2.0-cx)/fx)
+                pose.position.y = dd*((dy+dh/2.0-cy)/fy)
+                pose.position.z = dd
+                # TODO: Use global UP vector (0,0,1) and transform into frame used by this message.
+                q = quaternion_about_axis(np.deg2rad(alpha - 90), [0, -1, 0])
+                pose.orientation.w = q[3]
+                pose.orientation.x = q[0]
+                pose.orientation.y = q[1]
+                pose.orientation.z = q[2]
+                poseArray.poses.append(pose)
 
-                self.pub_pa.publish(poseArray)
+            self.pub_pa.publish(poseArray)
 
 
 if __name__ == "__main__":
