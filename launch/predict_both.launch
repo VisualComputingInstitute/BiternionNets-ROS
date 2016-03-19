@@ -5,7 +5,7 @@
     <arg name="src" default="tra" />
     <arg name="rgb" default="/spencer/sensors/rgbd_$(arg cam)_top/rgb/image_raw" />
     <arg name="d" default="/spencer/sensors/rgbd_$(arg cam)_top/depth/image_rect"/>
-    <arg name="topic" default="/spencer/perception/head_orientations" />
+    <arg name="topic" default="/spencer/perception/orientations" />
 
     <node pkg="biternion" type="predict.py" name="biternion_head" output="screen" respawn="false">
         <param name="model" value="head_80_50" />
@@ -18,14 +18,14 @@
         <param name="topic" value="$(arg topic)/head" />
     </node>
 
-    <node pkg="biternion" type="predict.py" name="biternion_full" output="screen" respawn="false">
-        <param name="model" value="full_80_240" />
-        <param name="weights" value="$(find biternion)/models/full_80_240.npz" />
+    <node pkg="biternion" type="predict.py" name="biternion_body" output="screen" respawn="false">
+        <param name="model" value="body_80_200" />
+        <param name="weights" value="$(find biternion)/models/body_80_200.npz" />
         <param name="tra" value="$(arg tra)" />
         <param name="ubd" value="$(arg ubd)" />
         <param name="src" value="$(arg src)" />
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />
-        <param name="topic" value="$(arg topic)/full" />
+        <param name="topic" value="$(arg topic)/body" />
     </node>
 </launch>
