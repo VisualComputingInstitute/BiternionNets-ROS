@@ -9,7 +9,7 @@ Most ROS installations are using Ubuntu, this is the recommended way:
 ```
 $ sudo apt-get install python-virtualenv libopenblas-dev liblapack-dev
 $ virtualenv --system-site-packages pyenv
-$ . pyvenv/bin/activate
+$ . pyenv/bin/activate
 $ pip install --upgrade numpy
 $ pip install git+https://github.com/Theano/Theano.git
 $ pip install git+https://github.com/lucasb-eyer/DeepFried2.git
