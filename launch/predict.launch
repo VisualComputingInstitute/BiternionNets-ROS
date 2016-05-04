@@ -1,5 +1,7 @@
 <launch>
+    <!-- The model name corresponds to the name of the *.py files in the "models" subdirectory, without the extension. -->
     <arg name="model" default="head_50_50" />
+    <!-- Full path (can use `~`) to the weights file corresponding to the model. -->
     <arg name="weights" default="$(find biternion)/models/head_50_50.npz" />
     <arg name="cam" default="rear" />
     <arg name="tra" default="/spencer/perception_internal/people_tracking/rgbd_$(arg cam)_top/tracked_persons_2d" />
