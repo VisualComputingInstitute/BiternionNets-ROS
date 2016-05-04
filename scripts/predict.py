@@ -55,6 +55,9 @@ class Predictor(object):
         self.pub_pa = rospy.Publisher(topic + "/pose", PoseArray, queue_size=3)
         self.pub_tracks = rospy.Publisher(topic + "/tracks", TrackedPersons, queue_size=3)
 
+        # Ugly workaround for "jumps back in time" that the synchronizer sometime does.
+        self.last_stamp = rospy.Time()
+
         # Create and load the network.
         netlib = import_module(modelname)
         self.net = netlib.mknet()
@@ -93,6 +96,13 @@ class Predictor(object):
         ts.registerCallback(self.cb)
 
     def cb(self, src, rgb, d, caminfo, *more):
+        # Ugly workaround because approximate sync sometimes jumps back in time.
+        if rgb.header.stamp <= self.last_stamp:
+            rospy.logwarn("Jump back in time detected and dropped like it's hot")
+            return
+
+        self.last_stamp = rgb.header.stamp
+
         detrects = get_rects(src)
 
         # Early-exit to minimize CPU usage if possible.
