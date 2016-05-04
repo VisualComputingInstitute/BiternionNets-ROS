@@ -72,6 +72,7 @@ class Predictor(object):
         im = cutout(np.zeros((480,640,3), np.uint8), 0, 0, 150, 450)
         im = next(self.aug.augimg_pred(self.preproc(im), fast=True))
         self.net.forward(np.array([im]))
+        rospy.loginfo("BiternionNet initialized")
 
         src = rospy.get_param("~src", "tra")
         subs = []
