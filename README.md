@@ -121,5 +121,5 @@ Run the prediction node finally:
 roslaunch biternion predict.launch
 ```
 
-After that you can open rviz and check your predictions.
+After that you can open rqt and check your predictions.
 
