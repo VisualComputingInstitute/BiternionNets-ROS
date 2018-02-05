@@ -7,14 +7,17 @@ Install instructions
 Most ROS installations are using Ubuntu, this is the recommended way:
 
 ```
-$ sudo apt-get install python-virtualenv libopenblas-dev liblapack-dev
+$ sudo apt-get install python-virtualenv libopenblas-dev liblapack-dev gfortran
 $ virtualenv --system-site-packages pyenv
 $ . pyenv/bin/activate
 $ pip install --upgrade numpy
-$ pip install git+https://github.com/Theano/Theano.git
+$ pip install Theano==0.9.0
 $ pip install git+https://github.com/lucasb-eyer/DeepFried2.git
 $ pip install git+https://github.com/lucasb-eyer/lbtoolbox.git
 ```
+
+In case you are still using Python 2.x, there will be errors when installing `lbtoolbox`.
+You can safely ignore these as they happen in parts which are not used here.
 
 You can now do the following now and hope there's no error.
 It may take a while since it is pre-compiling quite some things:
