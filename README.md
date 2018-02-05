@@ -13,7 +13,7 @@ $ . pyenv/bin/activate
 $ pip install --upgrade numpy
 $ pip install Theano==0.9.0
 $ pip install git+https://github.com/lucasb-eyer/DeepFried2.git
-$ pip install git+https://github.com/lucasb-eyer/lbtoolbox.git
+$ pip install git+https://github.com/lucasb-eyer/lbtoolbox.git@18ef22987088c9eb3153abf37dc30abe027b2708
 ```
 
 In case you are still using Python 2.x, there will be errors when installing `lbtoolbox`.
