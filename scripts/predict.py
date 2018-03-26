@@ -25,10 +25,13 @@ from common import bit2deg, ensemble_biternions, subtractbg, cutout
 
 # Distinguish between STRANDS and SPENCER.
 try:
-    from upper_body_detector.msg import UpperBodyDetector
-except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
     from spencer_tracking_msgs.msg import TrackedPersons2d, TrackedPersons
+    HAS_TRACKED_PERSONS = True
+except ImportError:
+    from upper_body_detector.msg import UpperBodyDetector
+    from mdl_people_tracker.msg import TrackedPersons2d
+    HAS_TRACKED_PERSONS = False
 
 
 def get_rects(msg, with_depth=False):
@@ -53,7 +56,6 @@ class Predictor(object):
         self.pub = rospy.Publisher(topic, HeadOrientations, queue_size=3)
         self.pub_vis = rospy.Publisher(topic + '/image', ROSImage, queue_size=3)
         self.pub_pa = rospy.Publisher(topic + "/pose", PoseArray, queue_size=3)
-        self.pub_tracks = rospy.Publisher(topic + "/tracks", TrackedPersons, queue_size=3)
 
         # Ugly workaround for "jumps back in time" that the synchronizer sometime does.
         self.last_stamp = rospy.Time()
@@ -89,9 +91,12 @@ class Predictor(object):
         subs.append(message_filters.Subscriber('/'.join(rgb.split('/')[:-1] + ['camera_info']), CameraInfo))
 
         tra3d = rospy.get_param("~tra3d", "")
-        if src == "tra" and tra3d:
+        if src == "tra" and tra3d and HAS_TRACKED_PERSONS:
+            self.pub_tracks = rospy.Publisher(topic + "/tracks", TrackedPersons, queue_size=3)
             subs.append(message_filters.Subscriber(tra3d, TrackedPersons))
             self.listener = TransformListener()
+        else:
+            self.pub_tracks = None
 
         ts = message_filters.ApproximateTimeSynchronizer(subs, queue_size=5, slop=0.5)
         ts.registerCallback(self.cb)
@@ -111,7 +116,10 @@ class Predictor(object):
         #    return
 
         # If nobody's listening, why should we be computing?
-        if 0 == sum(p.get_num_connections() for p in (self.pub, self.pub_vis, self.pub_pa, self.pub_tracks)):
+        listeners = sum(p.get_num_connections() for p in (self.pub, self.pub_vis, self.pub_pa))
+        if self.pub_tracks is not None:
+            listeners += self.pub_tracks.get_num_connections()
+        if listeners == 0:
             return
 
         header = rgb.header
@@ -184,7 +192,7 @@ class Predictor(object):
 
             self.pub_pa.publish(poseArray)
 
-        if len(more) == 1 and 0 < self.pub_tracks.get_num_connections():
+        if len(more) == 1 and self.pub_tracks is not None and 0 < self.pub_tracks.get_num_connections():
             t3d = more[0]
             try:
                 self.listener.waitForTransform(header.frame_id, t3d.header.frame_id, rospy.Time(), rospy.Duration(1))

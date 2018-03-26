@@ -13,9 +13,9 @@ from sensor_msgs.msg import Image as ROSImage
 
 # Distinguish between STRANDS and SPENCER.
 try:
-    from upper_body_detector.msg import UpperBodyDetector
-except ImportError:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
+except ImportError:
+    from upper_body_detector.msg import UpperBodyDetector
 
 
 

@@ -4,9 +4,15 @@
 #include <ros/ros.h>
 
 #include <message_filters/subscriber.h>
-#include <rwth_perception_people_msgs/UpperBodyDetector.h>
 
+#ifdef STRANDS_FRAMEWORK
+#include <upper_body_detector/UpperBodyDetector.h>
+using namespace upper_body_detector;
+#endif
+#ifdef SPENCER_FRAMEWORK
+#include <rwth_perception_people_msgs/UpperBodyDetector.h>
 using namespace rwth_perception_people_msgs;
+#endif
 
 size_t g_counter = 0;
 

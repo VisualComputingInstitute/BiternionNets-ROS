@@ -1,0 +1,24 @@
+<launch>
+    <!-- The model name corresponds to the name of the *.py files in the "models" subdirectory, without the extension. -->
+    <arg name="model" default="head_50_50" />
+    <!-- Full path (can use `~`) to the weights file corresponding to the model. -->
+    <arg name="weights" default="$(find biternion)/models/head_50_50.npz" />
+    <arg name="tra" default="/mdl_people_tracker/tracked_persons_2d" />
+    <arg name="ubd" default="/upper_body_detector/detections" />
+    <arg name="src" default="tra" />
+    <arg name="rgb" default="/head_xtion/rgb/image_raw" />
+    <arg name="d" default="/head_xtion/depth_registered/image_raw"/>
+    <arg name="topic" default="/head_orientations" />
+
+    <node pkg="biternion" type="predict.py" name="biternion_predict" output="screen" respawn="false">
+        <param name="model" value="$(arg model)" />
+        <param name="weights" value="$(arg weights)" />
+        <param name="tra" value="$(arg tra)" />
+        <param name="ubd" value="$(arg ubd)" />
+        <param name="src" value="$(arg src)" />
+        <param name="rgb" value="$(arg rgb)" />
+        <param name="d" value="$(arg d)" />
+        <param name="topic" value="$(arg topic)" />
+        <param name="tra3d" value="" />
+    </node>
+</launch>

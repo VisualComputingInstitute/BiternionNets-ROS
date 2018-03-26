@@ -13,9 +13,14 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
+#ifdef STRANDS_FRAMEWORK
+#include <upper_body_detector/UpperBodyDetector.h>
+using namespace upper_body_detector;
+#endif
+#ifdef SPENCER_FRAMEWORK
 #include <rwth_perception_people_msgs/UpperBodyDetector.h>
-
 using namespace rwth_perception_people_msgs;
+#endif
 
 // These are set by params to the node.
 std::string g_dir;

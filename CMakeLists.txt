@@ -12,9 +12,19 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     std_msgs
     message_generation
-    rwth_upper_body_detector
-    rwth_pedestrian_tracking
+
+    # Sadly, no optional components support by ROS, so switch between those manually:
+    # Furthermore, don't forget to use the correct `add_definitions` just below.
+    # For the STRANDS framework, use the following two:
+    upper_body_detector
+    mdl_people_tracker
+    # For the SPENCER framework, use the following two:
+    #rwth_upper_body_detector
+    #rwth_pedestrian_tracking
 )
+
+add_definitions(-DSTRANDS_FRAMEWORK)
+#add_definitions(-DSPENCER_FRAMEWORK)
 
 #######################################
 ## Declare ROS messages and services ##

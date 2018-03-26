@@ -16,12 +16,17 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
+#ifdef STRANDS_FRAMEWORK
+#include <mdl_people_tracker/TrackedPersons2d.h>
+using namespace mdl_people_tracker;
+#endif
+#ifdef SPENCER_FRAMEWORK
 #include <spencer_tracking_msgs/TrackedPersons2d.h>
+using namespace spencer_tracking_msgs;
+#endif
 
 extern "C" int mkpath(const char *path);
 void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh=1.0f, float bgcoeff=0.5f);
-
-using namespace spencer_tracking_msgs;
 
 // These are set by params to the node.
 std::string g_dir;
