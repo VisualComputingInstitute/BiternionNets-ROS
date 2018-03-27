@@ -4,8 +4,11 @@
     <arg name="factor" default="-1" />
     <arg name="hfactor" default="$(arg factor)" />
     <arg name="wfactor" default="$(arg factor)" />
-    <arg name="bgcoeff" default="0.5" />
+    <arg name="bgpercentile" default="0.5" />
     <arg name="subbg" default="false" />
+    <!--<arg name="track2d" default="/mdl_people_tracker/tracked_persons_2d" />-->
+    <!--<arg name="rgb" default="/head_xtion/rgb/image_rect_color" />-->
+    <!--<arg name="d" default="" />-->
     <arg name="src" default="rear" />
     <arg name="track2d" default="/spencer/perception_internal/people_tracking/rgbd_$(arg src)_top/tracked_persons_2d" />
     <arg name="rgb" default="/spencer/sensors/rgbd_$(arg src)_top/rgb/image_raw" />
@@ -15,7 +18,7 @@
         <param name="dir" value="$(arg dir)" />
         <param name="hfactor" value="$(arg hfactor)" />
         <param name="wfactor" value="$(arg wfactor)" />
-        <param name="bgcoeff" value="$(arg bgcoeff)" />
+        <param name="bgpercentile" value="$(arg bgpercentile)" />
         <param name="subbg" value="$(arg subbg)" />
         <param name="track2d" value="$(arg track2d)" />
         <param name="rgb" value="$(arg rgb)" />

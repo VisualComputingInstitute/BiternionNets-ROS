@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <string.h>
 #include <memory.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 static int do_mkdir(const char *path, mode_t mode)

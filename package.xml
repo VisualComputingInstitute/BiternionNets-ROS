@@ -32,6 +32,7 @@
   <run_depend>message_filters</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
+  <!-- And for the run_depend, it still works if we always include both. -->
   <run_depend>upper_body_detector</run_depend>
   <run_depend>mdl_people_tracker</run_depend>
   <run_depend>rwth_upper_body_detector</run_depend>

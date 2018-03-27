@@ -1,15 +1,27 @@
 <launch>
     <!-- TODO: Maybe change to something better by default? -->
     <arg name="dir" default="~" />
-    <arg name="fullbody" default="false" />
+    <arg name="sticky" default="false" />
+    <arg name="subbg" default="false" />
 
-    <arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_front_top/upper_body_detector/detections" />
-    <arg name="rgb" default="/spencer/sensors/rgbd_front_top/rgb/image_raw" />
-    <arg name="d" default="/spencer/sensors/rgbd_front_top/depth/image_rect" />
+    <!-- A `hfactor` of 3 and `wfactor` of 1 corresponds to full-body. -->
+    <arg name="factor" default="-1" />
+    <arg name="hfactor" default="$(arg factor)" />
+    <arg name="wfactor" default="$(arg factor)" />
 
-    <node pkg="head_orientation" type="dump_ubd" name="dump_ubd" output="screen">
+    <!--<arg name="ubd" default="/spencer/perception_internal/people_detection/rgbd_front_top/upper_body_detector/detections" />-->
+    <!--<arg name="rgb" default="/spencer/sensors/rgbd_front_top/rgb/image_raw" />-->
+    <!--<arg name="d" default="/spencer/sensors/rgbd_front_top/depth/image_rect" />-->
+    <arg name="ubd" default="/upper_body_detector/detections" />
+    <arg name="rgb" default="/head_xtion/rgb/image_rect_color" />
+    <arg name="d" default="/head_xtion/depth/image_rect" />
+
+    <node pkg="biternion" type="dump_ubd" name="dump_ubd" output="screen">
         <param name="dir" value="$(arg dir)" />
-        <param name="fullbody" value="$(arg fullbody)" type="bool" />
+        <param name="sticky" value="$(arg sticky)" type="bool" />
+        <param name="subbg" value="$(arg subbg)" type="bool" />
+        <param name="hfactor" value="$(arg hfactor)" />
+        <param name="wfactor" value="$(arg wfactor)" />
         <param name="ubd" value="$(arg ubd)" />
         <param name="rgb" value="$(arg rgb)" />
         <param name="d" value="$(arg d)" />

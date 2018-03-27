@@ -2,7 +2,7 @@
 #include <iostream>
 #include <math.h>
 
-float mediandepth(const cv::Mat &m, double bgcoeff)
+float depthpercentile(const cv::Mat &m, double percentile)
 {
     std::vector<float> depths;
     depths.reserve(m.cols*m.rows);
@@ -18,13 +18,13 @@ float mediandepth(const cv::Mat &m, double bgcoeff)
     }
 
     // Sort the first half.
-    std::nth_element(depths.begin(), depths.begin() + depths.size() * bgcoeff, depths.end());
+    std::nth_element(depths.begin(), depths.begin() + depths.size() * percentile, depths.end());
 
-    // And there we can access the median.
-    return depths[depths.size() * bgcoeff];
+    // And there we can access the percentile.
+    return depths[depths.size() * percentile];
 }
 
-void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh, float bgcoeff)
+void subtractbg(cv::Mat &rgb, const cv::Mat &d, float fgdepth, float thresh)
 {
     // We require this, otherwise there's no correspondence!
     // TODO: Fail better.
@@ -33,15 +33,13 @@ void subtractbg(cv::Mat &rgb, const cv::Mat &d, float thresh, float bgcoeff)
         return;
     }
 
-    float md = mediandepth(d, bgcoeff);
-
     for(size_t y = 0 ; y < d.rows ; ++y) {
         const float *dpix = d.ptr<float>(y);
         cv::Vec3b *rgbpix = rgb.ptr<cv::Vec3b>(y);
         for(size_t x = 0 ; x < d.cols ; ++x, ++dpix, ++rgbpix) {
             // Replace pixels whose depth is too far or nan with 0.
-            if(md+thresh < *dpix || isnan(*dpix)) {
-                (*rgbpix)[0] = (*rgbpix)[1] = (*rgbpix)[2] = 0;
+            if(fgdepth+thresh < *dpix || isnan(*dpix)) {
+                (*rgbpix)[0] = 0 ; (*rgbpix)[1] = 0 ; (*rgbpix)[2] = 0;
             }
         }
     }
