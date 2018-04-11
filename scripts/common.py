@@ -1,18 +1,26 @@
 import numpy as np
 
 
+def normalized(x, axis=-1):
+    return x / (np.linalg.norm(x, axis=axis, keepdims=True) + 1e-12)
+
+
+def sigmoid(x):
+    return np.exp(-np.logaddexp(0, -x))
+
+
 def deg2bit(deg):
   rad = np.deg2rad(deg)
   return np.array([np.cos(rad), np.sin(rad)]).T
 
 
-def bit2deg(angles_bit):
-  return (np.rad2deg(np.arctan2(angles_bit[:,1], angles_bit[:,0])) + 360) % 360
+def bit2deg(bit):
+  return (np.rad2deg(np.arctan2(bit[...,1], bit[...,0])) + 360) % 360
 
 
 def flipbiternions(bits):
   bits = bits.copy()
-  bits[:,1] *= -1
+  bits[...,1] *= -1
   return bits
 
 

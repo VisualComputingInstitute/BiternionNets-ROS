@@ -19,10 +19,6 @@ from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion, QuaternionStam
 from biternion.msg import HeadOrientations
 from visualization_msgs.msg import Marker
 
-import DeepFried2 as df
-
-from common import bit2deg, ensemble_biternions, subtractbg, cutout
-
 # Distinguish between STRANDS and SPENCER.
 try:
     from rwth_perception_people_msgs.msg import UpperBodyDetector
@@ -62,18 +58,11 @@ class Predictor(object):
 
         # Create and load the network.
         netlib = import_module(modelname)
-        self.net = netlib.mknet()
-        self.net.__setstate__(np.load(weightsname))
-        self.net.evaluate()
+        self.model = netlib.Model(weightsname, GPU=False)
 
-        self.aug = netlib.mkaug(None, None)
-        self.preproc = netlib.preproc
-        self.getrect = netlib.getrect
-
-        # Do a fake forward-pass for precompilation.
-        im = cutout(np.zeros((480,640,3), np.uint8), 0, 0, 150, 450)
-        im = next(self.aug.augimg_pred(self.preproc(im), fast=True))
-        self.net.forward(np.array([im]))
+        # Do a fake forward-pass for precompilation/GPU init/...
+        self.model(np.zeros((480,640,3), np.uint8),
+                   np.zeros((480,640), np.float32), [(0,0,150,450)])
         rospy.loginfo("BiternionNet initialized")
 
         src = rospy.get_param("~src", "tra")
@@ -103,9 +92,9 @@ class Predictor(object):
 
     def cb(self, src, rgb, d, caminfo, *more):
         # Ugly workaround because approximate sync sometimes jumps back in time.
-        if rgb.header.stamp <= self.last_stamp:
-            rospy.logwarn("Jump back in time detected and dropped like it's hot")
-            return
+        #if rgb.header.stamp <= self.last_stamp:
+        #    rospy.logwarn("Jump back in time detected and dropped like it's hot")
+        #    return
 
         self.last_stamp = rgb.header.stamp
 
@@ -124,45 +113,31 @@ class Predictor(object):
 
         header = rgb.header
         bridge = CvBridge()
-        rgb = bridge.imgmsg_to_cv2(rgb)[:,:,::-1]  # Need to do BGR-RGB conversion manually.
+        rgb = bridge.imgmsg_to_cv2(rgb, desired_encoding='rgb8')
         d = bridge.imgmsg_to_cv2(d)
-        imgs = []
-        for detrect in detrects:
-            detrect = self.getrect(*detrect)
-            det_rgb = cutout(rgb, *detrect)
-            det_d = cutout(d, *detrect)
 
-            # Preprocess and stick into the minibatch.
-            im = subtractbg(det_rgb, det_d, 1.0, 0.5)
-            im = self.preproc(im)
-            imgs.append(im)
-            sys.stderr.write("\r{}".format(self.counter)) ; sys.stderr.flush()
-            self.counter += 1
+        # Do the extraction and prediction
+        preds, confs = self.model(rgb, d, detrects)
+        self.counter += len(preds)
+        sys.stderr.write("\r{}".format(self.counter)) ; sys.stderr.flush()
 
-        # TODO: We could further optimize by putting all augmentations in a
-        #       single batch and doing only one forward pass. Should be easy.
-        if len(detrects):
-            bits = [self.net.forward(batch) for batch in self.aug.augbatch_pred(np.array(imgs), fast=True)]
-            preds = bit2deg(ensemble_biternions(bits)) - 90  # Subtract 90 to correct for "my weird" origin.
-            # print(preds)
-        else:
-            preds = []
-
+        # Publish angle predictions
         if 0 < self.pub.get_num_connections():
             self.pub.publish(HeadOrientations(
                 header=header,
                 angles=list(preds),
-                confidences=[0.83] * len(imgs)
+                confidences=list(confs),
             ))
 
         # Visualization
+        # TODO: Visualize confidence, too.
         if 0 < self.pub_vis.get_num_connections():
-            rgb_vis = rgb[:,:,::-1].copy()
+            rgb_vis = rgb.copy()
             for detrect, alpha in zip(detrects, preds):
-                l, t, w, h = self.getrect(*detrect)
+                l, t, w, h = self.model.getrect(*detrect)
                 px =  int(round(np.cos(np.deg2rad(alpha))*w/2))
                 py = -int(round(np.sin(np.deg2rad(alpha))*h/2))
-                cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,255,255), 1)
+                cv2.rectangle(rgb_vis, (detrect[0], detrect[1]), (detrect[0]+detrect[2],detrect[1]+detrect[3]), (0,0,255), 1)
                 cv2.rectangle(rgb_vis, (l,t), (l+w,t+h), (0,255,0), 2)
                 cv2.line(rgb_vis, (l+w//2, t+h//2), (l+w//2+px,t+h//2+py), (0,255,0), 2)
                 # cv2.putText(rgb_vis, "{:.1f}".format(alpha), (l, t+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,255), 2)
@@ -177,7 +152,7 @@ class Predictor(object):
             poseArray = PoseArray(header=header)
 
             for (dx, dy, dw, dh, dd), alpha in zip(get_rects(src, with_depth=True), preds):
-                dx, dy, dw, dh = self.getrect(dx, dy, dw, dh)
+                dx, dy, dw, dh = self.model.getrect(dx, dy, dw, dh)
 
                 # PoseArray message for boundingbox centres
                 poseArray.poses.append(Pose(

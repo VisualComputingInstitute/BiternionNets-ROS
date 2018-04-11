@@ -4,13 +4,37 @@ An implementation of [BiternionNets](http://www.vision.rwth-aachen.de/publicatio
 Install instructions
 --------------------
 
-Most ROS installations are using Ubuntu, this is the recommended way:
+Most ROS installations are using Ubuntu, this is the recommended way.
+
+There are two versions of the code in this repo:
+- The original version (`v1`) is based on my `DeepFried2` toolbox
+  and `Theano`, for which most code and this README are written.
+  The problem is that `Theano` and hence my toolbox are discontinued.
+- The new version (`v2`) uses the newer `PyTorch` library.
+  Unfortunately, I don't have the time to port everything, so it is
+  a little less documented, especially the training part.
+Which version is used only depends on which model you choose as a parameter
+when launching `predict.launch`.
+
+### Setting up a virtualenv
+
+This step is common to both versions:
 
 ```
 $ sudo apt-get install python-virtualenv libopenblas-dev liblapack-dev gfortran
 $ virtualenv --system-site-packages pyenv
 $ . pyenv/bin/activate
 $ pip install --upgrade numpy
+```
+
+You'll always have to run `. pyenv/bin/activate` when you open a new terminal
+and expect to use BiternionNets.
+
+Now on to the version-specific dependencies:
+
+### Installing the original Theano-based version
+
+```
 $ pip install Theano==0.9.0
 $ pip install git+https://github.com/lucasb-eyer/DeepFried2.git
 $ pip install git+https://github.com/lucasb-eyer/lbtoolbox.git@18ef22987088c9eb3153abf37dc30abe027b2708
@@ -24,6 +48,17 @@ It may take a while since it is pre-compiling quite some things:
 
 ```
 $ python -c 'import DeepFried2'
+```
+
+### Installing the new PyTorch-based version
+
+Follow the [instructions on the official PyTorch website](https://pytorch.org),
+but make sure to choose the `pip`-based version (and have the venv activated).
+
+You can test if it worked by running the following and seeing no error:
+
+```
+$ python -c 'import torch'
 ```
 
 Training a model
